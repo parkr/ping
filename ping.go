@@ -11,7 +11,8 @@ import (
 )
 
 func ping(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "")
+	w.Header().Set("Content-Type", "application/javascript")
+	fmt.Fprintf(w, "(function(){})();")
 
 	referrer := r.Referer()
 	if referrer == "" {
