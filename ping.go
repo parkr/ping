@@ -27,8 +27,9 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ip string
-	if os.Getenv("PING_PROXIED") == "true" {
+	if os.Getenv("PING_PROXIED") != "" {
 		ip = r.Header.Get("X-Forwarded-For")
+		log.Println("Fetching IP from proxy: ", ip)
 	} else {
 		ip = r.RemoteAddr
 	}
