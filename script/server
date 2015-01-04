@@ -1,0 +1,2 @@
+#!/bin/bash
+script/build && PORT=8972 PING_DB=ping@/ping ./ping
