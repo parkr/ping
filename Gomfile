@@ -1,0 +1,3 @@
+gom 'github.com/zenazn/goji', :branch => 'master'
+gom 'github.com/jmoiron/sqlx', :branch => 'master'
+gom 'github.com/go-sql-driver/mysql'
