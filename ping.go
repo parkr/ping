@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/zenazn/goji"
@@ -25,8 +26,15 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ip string
+	if os.Getenv("PING_PROXIED") == "true" {
+		ip = r.Header.Get("X-Forwarded-For")
+	} else {
+		ip = r.RemoteAddr
+	}
+
 	visit := &Visit{
-		IP:        r.RemoteAddr,
+		IP:        ip,
 		Host:      url.Host,
 		Path:      url.Path,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),

@@ -40,3 +40,6 @@ $ PORT=8972 PING_DB=user:passwd@localhost/ping ping
 
 Specify a port (defaults to `8000`) and a database URL and you're off to
 the races. Enjoy!
+
+Running behind a proxy? No problem. Specify `PING_PROXIED=true` when
+invoking `ping` and you're good to go.
