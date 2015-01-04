@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/zenazn/goji"
@@ -27,7 +26,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ip string
-    if res := r.Header.Get("X-Forwarded-For") {
+    if res := r.Header.Get("X-Forwarded-For"); res != "" {
 		ip = res
 		log.Println("Fetching IP from proxy: ", ip)
 	} else {
