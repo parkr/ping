@@ -43,5 +43,6 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	goji.Get("/ping", ping)
+	goji.Get("/ping.js", ping)
 	goji.Serve()
 }
