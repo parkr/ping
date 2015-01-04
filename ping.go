@@ -27,9 +27,9 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ip string
-    if res := r.Header.Get("X-Forwarded-For"); res != "" {
+	if res := r.Header.Get("X-Forwarded-For"); res != "" {
+		log.Println("Fetching IP from proxy: ", res)
 		ip = res
-		log.Println("Fetching IP from proxy: ", ip)
 	} else {
 		ip = r.RemoteAddr
 	}
