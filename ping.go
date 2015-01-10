@@ -20,6 +20,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	referrer := r.Referer()
 	if referrer == "" {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
