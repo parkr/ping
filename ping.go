@@ -10,9 +10,13 @@ import (
 	"github.com/zenazn/goji"
 )
 
+const returnedJavaScript = "(function(){})();"
+const lengthOfJavaScript = "17"
+
 func ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, "(function(){})();")
+	w.Header().Set("Content-Length", lengthOfJavaScript)
+	fmt.Fprintf(w, returnedJavaScript)
 
 	referrer := r.Referer()
 	if referrer == "" {
