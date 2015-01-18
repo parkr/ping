@@ -14,21 +14,26 @@ const (
 	QueryAllHosts = `SELECT DISTINCT host FROM visits;`
 )
 
+// Fetch a count of all the visitors for the given path. This is done by
+// counting the distinct IP addresses which have visited the path.
 func VisitorsForPath(db *sqlx.DB, path string) (count int, err error) {
 	err = db.Get(&count, QueryVisitorsPerPath, path)
 	return count, err
 }
 
+// Fetch a count of all the views of the path.
 func ViewsForPath(db *sqlx.DB, path string) (count int, err error) {
 	err = db.Get(&count, QueryVisitsPerPath, path)
 	return count, err
 }
 
+// Fetch all the paths in the database.
 func AllPaths(db *sqlx.DB) (paths []string, err error) {
 	err = db.Select(&paths, QueryAllPaths)
 	return paths, err
 }
 
+// Fetch all the hosts in the database.
 func AllHosts(db *sqlx.DB) (hosts []string, err error) {
 	err = db.Select(&hosts, QueryAllHosts)
 	return hosts, err
