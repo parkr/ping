@@ -10,12 +10,17 @@ import (
 	"github.com/zenazn/goji"
 )
 
+const returnedJavaScript = "(function(){})();"
+const lengthOfJavaScript = "17"
+
 func ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
-	fmt.Fprintf(w, "(function(){})();")
+	w.Header().Set("Content-Length", lengthOfJavaScript)
+	fmt.Fprintf(w, returnedJavaScript)
 
 	referrer := r.Referer()
 	if referrer == "" {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -28,7 +33,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	var ip string
 	if res := r.Header.Get("X-Forwarded-For"); res != "" {
-		log.Println("Fetching IP from proxy: ", res)
+		log.Println("Fetching IP from proxy:", res)
 		ip = res
 	} else {
 		ip = r.RemoteAddr
@@ -48,6 +53,8 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func main() {
