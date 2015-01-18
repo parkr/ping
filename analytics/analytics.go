@@ -44,8 +44,6 @@ func AllHosts(db *sqlx.DB) (hosts []string, err error) {
 
 // Fetch the distinct entries of an arbitrary column in the database.
 func ListDistinctColumn(db *sqlx.DB, col string) (entries []string, err error) {
-	query := fmt.Sprintf("SELECT DISTINCT %s FROM visits;", col)
-	fmt.Println(query)
-	err = db.Select(&entries, query)
+	err = db.Select(&entries, fmt.Sprintf("SELECT DISTINCT %s FROM visits;", col))
 	return entries, err
 }
