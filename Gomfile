@@ -1,3 +1,5 @@
 gom 'github.com/zenazn/goji', :branch => 'master'
 gom 'github.com/jmoiron/sqlx', :branch => 'master'
 gom 'github.com/go-sql-driver/mysql'
+gom 'github.com/parkr/gossip/src/gossip/serializer'
+gom 'github.com/parkr/ping/analytics'
