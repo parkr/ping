@@ -1,0 +1,35 @@
+package analytics
+
+import "github.com/jmoiron/sqlx"
+
+const (
+	// Count the number of distinct IP addresses which have visitied the path.
+	QueryVisitorsPerPath = `SELECT COUNT(distinct ip) FROM visits WHERE path = ?;`
+	// Count the number of entries with the given path.
+	QueryVisitsPerPath   = `SELECT COUNT(id) FROM visits WHERE path = ?;`
+
+	// List all the distinct paths in the database.
+	QueryAllPaths = `SELECT DISTINCT path FROM visits;`
+	// List all the distinct hosts in the database.
+	QueryAllHosts = `SELECT DISTINCT host FROM visits;`
+)
+
+func VisitorsForPath(db *sqlx.DB, path string) (count int, err error) {
+	err = db.Get(&count, QueryVisitorsPerPath, path)
+	return count, err
+}
+
+func ViewsForPath(db *sqlx.DB, path string) (count int, err error) {
+	err = db.Get(&count, QueryVisitsPerPath, path)
+	return count, err
+}
+
+func AllPaths(db *sqlx.DB) (paths []string, err error) {
+	err = db.Select(&paths, QueryAllPaths)
+	return paths, err
+}
+
+func AllHosts(db *sqlx.DB) (hosts []string, err error) {
+	err = db.Select(&hosts, QueryAllHosts)
+	return hosts, err
+}
