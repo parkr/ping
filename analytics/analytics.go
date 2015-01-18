@@ -1,12 +1,15 @@
 package analytics
 
-import "github.com/jmoiron/sqlx"
+import (
+	"fmt"
+	"github.com/jmoiron/sqlx"
+)
 
 const (
 	// Count the number of distinct IP addresses which have visitied the path.
 	QueryVisitorsPerPath = `SELECT COUNT(distinct ip) FROM visits WHERE path = ?;`
 	// Count the number of entries with the given path.
-	QueryVisitsPerPath   = `SELECT COUNT(id) FROM visits WHERE path = ?;`
+	QueryVisitsPerPath = `SELECT COUNT(id) FROM visits WHERE path = ?;`
 
 	// List all the distinct paths in the database.
 	QueryAllPaths = `SELECT DISTINCT path FROM visits;`
@@ -41,6 +44,6 @@ func AllHosts(db *sqlx.DB) (hosts []string, err error) {
 
 // Fetch the distinct entries of an arbitrary column in the database.
 func ListDistinctColumn(db *sqlx.DB, col string) (entries []string, err error) {
-	err = db.Select(&entries, "SELECT DISTINCT ? FROM visits;", col)
+	err = db.Select(&entries, fmt.Sprintf("SELECT DISTINCT %s FROM visits;", col))
 	return entries, err
 }
