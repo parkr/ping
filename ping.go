@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/parkr/ping/analytics"
@@ -14,21 +15,34 @@ import (
 const returnedJavaScript = "(function(){})();"
 const lengthOfJavaScript = "17"
 
-func ping(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/javascript")
-	w.Header().Set("Content-Length", lengthOfJavaScript)
-	fmt.Fprintf(w, returnedJavaScript)
+func javascriptRespond(w http.ResponseWriter, code int, err string) {
+	w.WriteHeader(code)
 
+	var content string
+	if err == "" {
+		content = returnedJavaScript
+	} else {
+		content = fmt.Sprintf(`(function(){console.error("%s")})();`, err)
+	}
+
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+	fmt.Fprintf(w, content)
+}
+
+func ping(w http.ResponseWriter, r *http.Request) {
 	referrer := r.Referer()
 	if referrer == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		log.Println("empty referrer")
+		javascriptRespond(w, http.StatusBadRequest, "empty referrer")
 		return
 	}
 
 	url, err := url.Parse(referrer)
 
 	if err != nil {
-		http.Error(w, "Couldn't parse "+referrer+": "+err.Error(), 500)
+		log.Println("invalid referrer:", referrer)
+		javascriptRespond(w, 500, "Couldn't parse referrer: "+err.Error())
 		return
 	}
 
@@ -51,11 +65,11 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	err = visit.Save()
 
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		javascriptRespond(w, 500, err.Error())
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	javascriptRespond(w, 201, "")
 }
 
 func counts(w http.ResponseWriter, r *http.Request) {
