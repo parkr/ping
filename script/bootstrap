@@ -1,2 +1,2 @@
 #!/bin/bash
-gom install
+make deps

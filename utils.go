@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/parkr/gossip/src/gossip/serializer"
+	"github.com/parkr/gossip/serializer"
 )
 
 func writeJsonResponse(w http.ResponseWriter, json interface{}) {
