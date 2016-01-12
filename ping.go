@@ -1,15 +1,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/parkr/ping/analytics"
 	"github.com/zenazn/goji"
+)
+
+var (
+	allowedHosts []string
+	whitelist    = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
 )
 
 const returnedJavaScript = "(function(){})();"
@@ -30,6 +37,23 @@ func javascriptRespond(w http.ResponseWriter, code int, err string) {
 	fmt.Fprintf(w, content)
 }
 
+func allowedHost(host string) bool {
+	if whitelist == nil || *whitelist == "" {
+		return true
+	}
+
+	if len(allowedHosts) == 0 {
+		allowedHosts = strings.SplitN(*whitelist, ",", -1)
+	}
+
+	for _, allowed := range allowedHosts {
+		if allowed == host {
+			return true
+		}
+	}
+	return false
+}
+
 func ping(w http.ResponseWriter, r *http.Request) {
 	referrer := r.Referer()
 	if referrer == "" {
@@ -43,6 +67,12 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("invalid referrer:", referrer)
 		javascriptRespond(w, 500, "Couldn't parse referrer: "+err.Error())
+		return
+	}
+
+	if !allowedHost(url.Host) {
+		log.Println("unauthorized host:", url.Host)
+		javascriptRespond(w, 403, "love the host, except noooope.")
 		return
 	}
 
@@ -118,6 +148,8 @@ func all(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	flag.Parse()
+
 	goji.Get("/ping", ping)
 	goji.Get("/ping.js", ping)
 	goji.Get("/counts", counts)
