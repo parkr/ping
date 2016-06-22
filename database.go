@@ -13,12 +13,13 @@ const (
 		id int(11) NOT NULL AUTO_INCREMENT,
     	ip varchar(255) NOT NULL,
     	host text NOT NULL,
+      user_agent text NOT NULL,
     	path text NOT NULL,
 		created_at datetime NOT NULL,
 		PRIMARY KEY (id)
 	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`
 	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'visits'`
-	insertVisit         = `INSERT INTO visits (ip, host, path, created_at) VALUES (:ip, :host, :path, :created_at)`
+	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
 )
 
 var db *sqlx.DB
@@ -44,11 +45,12 @@ type Visit struct {
 	IP        string `db:"ip"`
 	Host      string `db:"host"`
 	Path      string `db:"path"`
+	UserAgent string `db:"user_agent"`
 	CreatedAt string `db:"created_at"`
 }
 
 func (v *Visit) String() string {
-	return fmt.Sprintf("<%s | %s requested %s%s>", v.CreatedAt, v.IP, v.Host, v.Path)
+	return fmt.Sprintf("<%s | %s requested %s%s @ %s>", v.CreatedAt, v.IP, v.Host, v.Path, v.UserAgent)
 }
 
 func (v *Visit) Save() error {
