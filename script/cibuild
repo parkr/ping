@@ -1,2 +1,2 @@
 #!/bin/bash
-exit 1
+make -j8 all
