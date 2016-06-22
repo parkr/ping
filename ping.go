@@ -84,10 +84,8 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		ip = r.RemoteAddr
 	}
 
-	var ua string
-	if res := r.Header.Get("User-Agent"); res != "" {
-		ua = res
-	} else {
+	userAgent := r.Header.Get("User-Agent")
+	if userAgent == "" {
 		log.Println("empty user-agent")
 		javascriptRespond(w, http.StatusBadRequest, "empty user-agent")
 		return
@@ -97,7 +95,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		IP:        ip,
 		Host:      url.Host,
 		Path:      url.Path,
-		UserAgent: ua,
+		UserAgent: userAgent,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	log.Println("Logging visit:", visit.String())
