@@ -6,12 +6,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/parkr/ping/analytics"
-	"github.com/zenazn/goji"
 )
 
 var (
@@ -158,9 +158,15 @@ func all(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 
-	goji.Get("/ping", ping)
-	goji.Get("/ping.js", ping)
-	goji.Get("/counts", counts)
-	goji.Get("/all", all)
-	goji.Serve()
+	http.HandleFunc("/ping", ping)
+	http.HandleFunc("/ping.js", ping)
+	http.HandleFunc("/counts", counts)
+	http.HandleFunc("/all", all)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
