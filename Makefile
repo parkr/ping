@@ -1,4 +1,7 @@
-all: deps build test
+all: deps fmt build test
+
+fmt:
+	go fmt ./...
 
 build: deps
 	go build .
@@ -9,5 +12,4 @@ test: deps
 deps:
 	go get github.com/go-sql-driver/mysql \
 		github.com/jmoiron/sqlx \
-		github.com/parkr/gossip/serializer \
-		github.com/zenazn/goji
+		github.com/parkr/gossip/serializer
