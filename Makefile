@@ -6,7 +6,10 @@ fmt:
 build: deps
 	go build .
 
-test: deps
+testdeps:
+	script/setup-test-database
+
+test: deps testdeps
 	go test ./...
 
 deps:

@@ -1,4 +1,5 @@
 language: go
+services: [ mysql ]
 install: script/bootstrap
 script: script/cibuild
 sudo: false

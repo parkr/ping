@@ -1,0 +1,2 @@
+#!/bin/bash
+mysql -e "create database IF NOT EXISTS ping_test;" -u root
