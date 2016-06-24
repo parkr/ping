@@ -1,2 +1,2 @@
 #!/bin/bash
-make -j8 all
+PING_DB='root@/ping_test' make -j8 all
