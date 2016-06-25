@@ -156,8 +156,7 @@ func TestCountsMissingParam(t *testing.T) {
 	}
 }
 
-func TestCountsValidPath(t *testing.T) {
-
+func TestCountsValid(t *testing.T) {
 	request, err := http.NewRequest("POST", "/counts", strings.NewReader("path=/root"))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -197,4 +196,62 @@ func TestCountsValidPath(t *testing.T) {
 		}
 	}
 
+}
+
+func TestAllHost(t *testing.T) {
+	request, err := http.NewRequest("POST", "/all", strings.NewReader("type=host"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(all)
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	var body map[string][]string
+	json.NewDecoder(recorder.Body).Decode(&body)
+
+	expected := "example.org"
+	firstElement := body["entries"][0]
+
+	if firstElement != expected {
+		t.Errorf("handler returned unexpected body: got '%v' want %v",
+			firstElement, expected)
+	}
+}
+
+func TestAllPath(t *testing.T) {
+	request, err := http.NewRequest("POST", "/all", strings.NewReader("type=path"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(all)
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	var body map[string][]string
+	json.NewDecoder(recorder.Body).Decode(&body)
+
+	expected := "/root"
+	firstElement := body["entries"][0]
+
+	if firstElement != expected {
+		t.Errorf("handler returned unexpected body: got '%v' want %v",
+			firstElement, expected)
+	}
 }
