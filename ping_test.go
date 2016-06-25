@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/parkr/ping/analytics"
 )
 
 // Tests white listing.
@@ -95,6 +99,8 @@ func TestPingEmptyUserAgent(t *testing.T) {
 func TestPingSuccess(t *testing.T) {
 	*whitelist = "example.org"
 
+	visitCountStart, _ := analytics.ViewsForPath(db, "/root")
+
 	request, err := http.NewRequest("GET", "/ping", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -118,4 +124,77 @@ func TestPingSuccess(t *testing.T) {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			recorder.Body.String(), expected)
 	}
+
+	visitCountEnd, _ := analytics.ViewsForPath(db, "/root")
+
+	if visitCountEnd <= visitCountStart {
+		t.Errorf("visit was not saved, got %v want %v",
+			visitCountEnd, visitCountStart+1)
+	}
+}
+
+func TestCountsMissingParam(t *testing.T) {
+	request, err := http.NewRequest("POST", "/counts", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(counts)
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "Missing param\n"
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got '%v' want %v",
+			recorder.Body.String(), expected)
+	}
+}
+
+func TestCountsValidPath(t *testing.T) {
+
+	request, err := http.NewRequest("POST", "/counts", strings.NewReader("path=/root"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(counts)
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	var body map[string]int
+	json.NewDecoder(recorder.Body).Decode(&body)
+
+	if val, ok := body["views"]; ok {
+		if ok {
+			if val < 1 {
+				t.Errorf("Counts should have returned at least 1 view")
+			}
+		} else {
+			t.Errorf("Counts did not return views")
+		}
+	}
+
+	if val, ok := body["visitors"]; ok {
+		if ok {
+			if val < 1 {
+				t.Errorf("Counts should have returned at least 1 visitor")
+			}
+		} else {
+			t.Errorf("Counts did not return visitors")
+		}
+	}
+
 }
