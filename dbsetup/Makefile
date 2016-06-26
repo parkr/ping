@@ -1,20 +1,10 @@
-all: deps fmt build test
-
-db:
-	make -C dbsetup
-	dbsetup/dbsetup
+all: deps fmt build
 
 fmt:
 	go fmt ./...
 
 build: deps
 	go build .
-
-testdeps:
-	script/setup-test-database
-
-test: deps testdeps db
-	go test ./...
 
 deps:
 	go get github.com/go-sql-driver/mysql \

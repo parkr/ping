@@ -10,6 +10,10 @@ import (
 
 var db = sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
 
+func init() {
+	db.MustExec(`INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES ('127.0.0.1', 'example.org', '/root', 'go test client', NOW())`)
+}
+
 func TestVisitorsForPath(t *testing.T) {
 	visitors, err := VisitorsForPath(db, "/root")
 
