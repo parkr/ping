@@ -1,19 +1,16 @@
 all: deps fmt build test
 
-db:
-	make -C dbsetup
-	dbsetup/dbsetup
-
 fmt:
 	go fmt ./...
 
 build: deps
+	go build ./cmd/ping-initialize-db
 	go build .
 
 testdeps:
 	script/setup-test-database
 
-test: deps testdeps db
+test: deps testdeps
 	go test ./...
 
 deps:
