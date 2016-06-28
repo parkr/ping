@@ -4,10 +4,10 @@ fmt:
 	go fmt ./...
 
 build: deps
-	go build ./cmd/ping-initialize-db
 	go build .
 
 testdeps:
+	go build ./cmd/ping-initialize-db
 	script/setup-test-database
 
 test: deps testdeps
