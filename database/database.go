@@ -26,7 +26,7 @@ type TableCheck struct {
 	DoesExist int `db:"does_exist"`
 }
 
-func InitializeDatabase() *sqlx.DB {
+func Initialize() *sqlx.DB {
 	db := sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
 	db.Ping()
 	var check TableCheck

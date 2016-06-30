@@ -23,7 +23,7 @@ var (
 const returnedJavaScript = "(function(){})();"
 const lengthOfJavaScript = "17"
 
-var db = database.InitializeDatabase()
+var db = database.Initialize()
 
 func javascriptRespond(w http.ResponseWriter, code int, err string) {
 	w.WriteHeader(code)
