@@ -8,7 +8,12 @@ import (
 	"testing"
 
 	"github.com/parkr/ping/analytics"
+	"github.com/parkr/ping/database"
 )
+
+func init() {
+	db = database.Initialize()
+}
 
 // Tests white listing.
 // Hosts can be whitelisted so other sites can't mess with page views.
