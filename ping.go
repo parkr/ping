@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/parkr/ping/analytics"
+	"github.com/parkr/ping/database"
 )
 
 var (
@@ -21,6 +22,8 @@ var (
 
 const returnedJavaScript = "(function(){})();"
 const lengthOfJavaScript = "17"
+
+var db = database.InitializeDatabase()
 
 func javascriptRespond(w http.ResponseWriter, code int, err string) {
 	w.WriteHeader(code)
@@ -91,7 +94,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	visit := &Visit{
+	visit := &database.Visit{
 		IP:        ip,
 		Host:      url.Host,
 		Path:      url.Path,
@@ -100,7 +103,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Logging visit:", visit.String())
 
-	err = visit.Save()
+	err = visit.Save(db)
 
 	if err != nil {
 		javascriptRespond(w, 500, err.Error())

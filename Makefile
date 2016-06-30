@@ -7,7 +7,6 @@ build: deps
 	go build .
 
 testdeps:
-	go build ./cmd/ping-initialize-db
 	script/setup-test-database
 
 test: deps testdeps
