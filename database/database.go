@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"fmt"
@@ -22,14 +22,12 @@ const (
 	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
 )
 
-var db *sqlx.DB
-
 type TableCheck struct {
 	DoesExist int `db:"does_exist"`
 }
 
-func init() {
-	db = sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
+func Initialize() *sqlx.DB {
+	db := sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
 	db.Ping()
 	var check TableCheck
 	err := db.Get(&check, checkIfSchemaExists)
@@ -39,6 +37,7 @@ func init() {
 	if check.DoesExist < 1 {
 		db.MustExec(schema)
 	}
+	return db
 }
 
 type Visit struct {
@@ -53,7 +52,7 @@ func (v *Visit) String() string {
 	return fmt.Sprintf("<%s | %s requested %s%s @ %s>", v.CreatedAt, v.IP, v.Host, v.Path, v.UserAgent)
 }
 
-func (v *Visit) Save() error {
+func (v *Visit) Save(db *sqlx.DB) error {
 	_, err := db.NamedExec(insertVisit, v)
 	return err
 }
