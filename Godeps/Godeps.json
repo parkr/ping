@@ -1,0 +1,29 @@
+{
+	"ImportPath": "github.com/parkr/ping",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.3-2-g2e00b5c",
+			"Rev": "2e00b5cd70399450106cec6431c2e2ce3cae5034"
+		},
+		{
+			"ImportPath": "github.com/jmoiron/sqlx",
+			"Comment": "sqlx-v1.1-105-gf980a91",
+			"Rev": "f980a91bdc37abef88269b8f122d7de6352102f5"
+		},
+		{
+			"ImportPath": "github.com/jmoiron/sqlx/reflectx",
+			"Comment": "sqlx-v1.1-105-gf980a91",
+			"Rev": "f980a91bdc37abef88269b8f122d7de6352102f5"
+		},
+		{
+			"ImportPath": "github.com/parkr/gossip/serializer",
+			"Rev": "a9ea9f924daf8548ed7d18af99431a0411ec46b3"
+		}
+	]
+}
