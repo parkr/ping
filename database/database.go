@@ -27,7 +27,6 @@ type TableCheck struct {
 }
 
 func Initialize() *sqlx.DB {
-	fmt.Printf("\n\n\n\n!!!!!!!!!!! WTF IS '%s' !!!!!\n\n\n\n\n", os.Getenv("PING_DB"))
 	db := sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
 	db.Ping()
 	var check TableCheck
