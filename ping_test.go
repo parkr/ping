@@ -223,6 +223,11 @@ func TestAllHost(t *testing.T) {
 	var body map[string][]string
 	json.NewDecoder(recorder.Body).Decode(&body)
 
+	if len(body["entries"]) < 1 {
+		t.Errorf("expected 'entries' to exist, but was '%#v'", body["entries"])
+		return
+	}
+
 	expected := "example.org"
 	firstElement := body["entries"][0]
 
@@ -251,6 +256,11 @@ func TestAllPath(t *testing.T) {
 
 	var body map[string][]string
 	json.NewDecoder(recorder.Body).Decode(&body)
+
+	if len(body["entries"]) < 1 {
+		t.Errorf("expected 'entries' to exist, but was '%#v'", body["entries"])
+		return
+	}
 
 	expected := "/root"
 	firstElement := body["entries"][0]

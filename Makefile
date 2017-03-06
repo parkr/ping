@@ -1,19 +1,18 @@
-all: deps fmt build test
+all: fmt build test
 
 fmt:
 	go fmt ./...
 
-build: deps
+build:
 	go build .
 
 testdeps:
 	go build ./cmd/ping-initialize-db
 	script/setup-test-database
 
-test: deps testdeps
-	go test ./...
+test: testdeps
+	. script/test-env && go test ./...
 
-deps:
-	go get github.com/go-sql-driver/mysql \
-		github.com/jmoiron/sqlx \
-		github.com/parkr/gossip/serializer
+docker-release:
+	docker build -t parkr/ping:$(shell git rev-parse HEAD) .
+	docker push parkr/ping:$(shell git rev-parse HEAD)
