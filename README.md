@@ -35,7 +35,7 @@ Want to run ping? No problem.
 ```bash
 $ go get github.com/parkr/ping
 $ mysql -e 'create database ping;'
-$ PORT=8972 PING_DB=user:passwd@localhost/ping ping
+$ PING_DB=user:passwd@localhost/ping ping -http=:8972
 ```
 
 Specify a port (defaults to `8000`) and a database URL and you're off to

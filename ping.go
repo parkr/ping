@@ -159,6 +159,13 @@ func all(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	defaultPort := os.Getenv("PORT")
+	if defaultPort == "" {
+		defaultPort = "8000"
+	}
+
+	var binding string
+	flag.StringVar(&binding, "http", ":"+defaultPort, "The IP/port to bind to.")
 	flag.Parse()
 
 	http.HandleFunc("/ping", ping)
@@ -166,10 +173,5 @@ func main() {
 	http.HandleFunc("/counts", counts)
 	http.HandleFunc("/all", all)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
-	}
-
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(binding, nil))
 }
