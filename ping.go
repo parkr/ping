@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/parkr/ping/analytics"
 	"github.com/parkr/ping/database"
 )
@@ -23,7 +24,7 @@ var (
 const returnedJavaScript = "(function(){})();"
 const lengthOfJavaScript = "17"
 
-var db = database.Initialize()
+var db *sqlx.DB
 
 func javascriptRespond(w http.ResponseWriter, code int, err string) {
 	w.WriteHeader(code)
@@ -167,6 +168,8 @@ func main() {
 	var binding string
 	flag.StringVar(&binding, "http", ":"+defaultPort, "The IP/port to bind to.")
 	flag.Parse()
+
+	db = database.Initialize()
 
 	http.HandleFunc("/ping", ping)
 	http.HandleFunc("/ping.js", ping)

@@ -11,10 +11,6 @@ import (
 	"github.com/parkr/ping/database"
 )
 
-func init() {
-	db = database.Initialize()
-}
-
 // Tests white listing.
 // Hosts can be whitelisted so other sites can't mess with page views.
 func TestAllowedHost(t *testing.T) {
@@ -103,6 +99,10 @@ func TestPingEmptyUserAgent(t *testing.T) {
 //             likely return true because `checkIfSchemaExists` query doesn't include DB
 func TestPingSuccess(t *testing.T) {
 	*whitelist = "example.org"
+
+	if db == nil {
+		db = database.Initialize()
+	}
 
 	visitCountStart, _ := analytics.ViewsForPath(db, "/root")
 
