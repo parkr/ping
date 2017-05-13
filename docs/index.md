@@ -3,8 +3,6 @@ layout: home
 title: ping
 ---
 
-# ping
-
 Your very own Google Analytics replacement, without all of the Google.
 Simple as pie.
 
