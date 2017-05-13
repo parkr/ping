@@ -1,5 +1,5 @@
 ---
-layout: home
+layout: page
 title: ping
 ---
 
@@ -52,7 +52,11 @@ Prefer Docker? We got that too!
 ```bash
 $ mysql -e 'create database ping;'
 $ docker run --rm \
-  -e PING_DB=user:passwd@localhost/ping \
+  -e PING_DB=user:passwd@host-ip/ping \
   parkr/ping \
   ping -http=:8972
 ```
+
+Ensure that your Docker container is given access to the server MySQL is
+running on and that MySQL's `bind-address` host is `0.0.0.0` so it can be
+accessed by others. Or, use a MySQL proxy.
