@@ -1,0 +1,9 @@
+theme: jekyll-swiss
+theme_color: yellow
+
+title: ping
+description: Your very own Google Analytics replacement, without all of the Google. Simple as pie.
+
+social_link: github
+github_username: parkr
+github_repo: ping
