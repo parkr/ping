@@ -107,6 +107,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	err = visit.Save(db)
 
 	if err != nil {
+		log.Println("Error saving to db:", err)
 		javascriptRespond(w, 500, err.Error())
 		return
 	}
