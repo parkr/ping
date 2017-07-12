@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// This is the format for a MySQL Datetime Literal.
+	MySQLDateTimeFormat = "2006-01-02 15:04:05"
+
 	schema = `CREATE TABLE visits (
 		id int(11) NOT NULL AUTO_INCREMENT,
     	ip varchar(255) NOT NULL,

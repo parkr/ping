@@ -100,13 +100,14 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		Host:      url.Host,
 		Path:      url.Path,
 		UserAgent: userAgent,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		CreatedAt: time.Now().UTC().Format(database.MySQLDateTimeFormat),
 	}
 	log.Println("Logging visit:", visit.String())
 
 	err = visit.Save(db)
 
 	if err != nil {
+		log.Println("Error saving to db:", err)
 		javascriptRespond(w, 500, err.Error())
 		return
 	}
