@@ -160,6 +160,15 @@ func all(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func health(w http.ResponseWriter, r *http.Request) {
+	if err := db.Ping(); err != nil {
+		http.Error(w, "error pinging db: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, "healthy")
+}
+
 func main() {
 	defaultPort := os.Getenv("PORT")
 	if defaultPort == "" {
@@ -172,6 +181,7 @@ func main() {
 
 	db = database.Initialize()
 
+	http.HandleFunc("/_health", health)
 	http.HandleFunc("/ping", ping)
 	http.HandleFunc("/ping.js", ping)
 	http.HandleFunc("/counts", counts)
