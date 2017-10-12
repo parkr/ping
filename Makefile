@@ -1,13 +1,15 @@
+PKG=github.com/parkr/ping
+
 all: fmt build test
 
 fmt:
-	go fmt ./...
+	go fmt $(PKG)/...
 
 build:
-	go build .
+	go build $(PKG)
 
 testdeps:
-	go build ./cmd/ping-initialize-db
+	go build $(PKG)/cmd/ping-initialize-db
 	script/setup-test-database
 
 test: testdeps

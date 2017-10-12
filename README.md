@@ -28,6 +28,11 @@ A single tiny JavaScript file that the user requests sends down these three
 things and that's all there is to it. As unintrusive as possible, while
 still providing insight into the site's strenghts.
 
+It also respects the [Do Not Track header](http://donottrack.us/), which
+many browsers now allow users to set for all requests. Complying with this
+header is not mandatory, but aligns nicely with our motivation for
+respecting users' privacy when they ask for it.
+
 ## Installation
 
 Want to run ping? No problem.

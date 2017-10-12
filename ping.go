@@ -32,6 +32,9 @@ func javascriptRespond(w http.ResponseWriter, code int, err string) {
 	var content string
 	if err == "" {
 		content = returnedJavaScript
+	} else if err == "not tracked" {
+		content = returnedJavaScript
+		w.Header().Set(DoNotTrackHeaderName, DoNotTrackHeaderValue)
 	} else {
 		content = fmt.Sprintf(`(function(){console.error("%s")})();`, err)
 	}
@@ -47,7 +50,7 @@ func allowedHost(host string) bool {
 	}
 
 	if len(allowedHosts) == 0 {
-		allowedHosts = strings.SplitN(*whitelist, ",", -1)
+		allowedHosts = strings.Split(*whitelist, ",")
 	}
 
 	for _, allowed := range allowedHosts {
@@ -59,6 +62,12 @@ func allowedHost(host string) bool {
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
+	if requestsDoNotTrack(r) {
+		log.Println("dnt requested")
+		javascriptRespond(w, http.StatusOK, "not tracked")
+		return
+	}
+
 	referrer := r.Referer()
 	if referrer == "" {
 		log.Println("empty referrer")
