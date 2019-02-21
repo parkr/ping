@@ -1,4 +1,5 @@
 PKG=github.com/parkr/ping
+REV=$(shell git rev-parse HEAD)
 
 all: fmt build test
 
@@ -15,6 +16,11 @@ testdeps:
 test: testdeps
 	. script/test-env && go test ./...
 
-docker-release:
-	docker build -t parkr/ping:$(shell git rev-parse HEAD) .
-	docker push parkr/ping:$(shell git rev-parse HEAD)
+docker-build:
+	docker build -t parkr/ping:$(REV) .
+
+docker-test: docker-build
+	docker run --rm -it --net=host parkr/ping:$(REV)
+
+docker-release: docker-build
+	docker push parkr/ping:$(REV)
