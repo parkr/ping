@@ -20,7 +20,7 @@ docker-build:
 	docker build -t parkr/ping:$(REV) .
 
 docker-test: docker-build
-	docker run --rm -it --net=host parkr/ping:$(REV)
+	docker run --name=ping-test --rm -it --net=host parkr/ping:$(REV)
 
 docker-release: docker-build
 	docker push parkr/ping:$(REV)

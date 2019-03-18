@@ -170,6 +170,11 @@ func all(w http.ResponseWriter, r *http.Request) {
 }
 
 func health(w http.ResponseWriter, r *http.Request) {
+	if db == nil {
+		http.Error(w, "error initializing db", http.StatusInternalServerError)
+		return
+	}
+
 	if err := db.Ping(); err != nil {
 		http.Error(w, "error pinging db: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -188,7 +193,7 @@ func main() {
 	flag.StringVar(&binding, "http", ":"+defaultPort, "The IP/port to bind to.")
 	flag.Parse()
 
-	db = database.Initialize()
+	db, _ = database.Initialize()
 
 	http.HandleFunc("/_health", health)
 	http.HandleFunc("/ping", ping)
@@ -196,5 +201,6 @@ func main() {
 	http.HandleFunc("/counts", counts)
 	http.HandleFunc("/all", all)
 
+	log.Println("Listening on", binding, "...")
 	log.Fatal(http.ListenAndServe(binding, nil))
 }

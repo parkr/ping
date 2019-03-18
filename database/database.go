@@ -29,18 +29,24 @@ type TableCheck struct {
 	DoesExist int `db:"does_exist"`
 }
 
-func Initialize() *sqlx.DB {
-	db := sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
-	db.Ping()
-	var check TableCheck
-	err := db.Get(&check, checkIfSchemaExists)
+func Initialize() (*sqlx.DB, error) {
+	db, err := sqlx.Connect("mysql", os.Getenv("PING_DB"))
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		return db, err
+	}
+	var check TableCheck
+	if err := db.Get(&check, checkIfSchemaExists); err != nil {
+		return db, err
 	}
 	if check.DoesExist < 1 {
-		db.MustExec(schema)
+		if _, err := db.Exec(schema); err != nil {
+			return db, err
+		}
 	}
-	return db
+	return db, nil
 }
 
 type Visit struct {
