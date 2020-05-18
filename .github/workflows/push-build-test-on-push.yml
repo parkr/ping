@@ -1,0 +1,12 @@
+on: push
+name: Build & test
+jobs:
+  buildAndTest:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Build & Test
+      uses: parkr/actions/docker-make@master
+      with:
+        args: docker-build -e REV=${{ github.sha }}
