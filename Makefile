@@ -1,5 +1,5 @@
 PKG=github.com/parkr/ping
-REV=$(shell git rev-parse HEAD)
+REV:=$(shell git rev-parse HEAD)
 
 all: fmt build test
 

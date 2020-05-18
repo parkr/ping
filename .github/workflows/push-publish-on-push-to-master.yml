@@ -1,0 +1,25 @@
+on:
+  push:
+    branches:
+      - master
+      - github-actions
+
+name: Publish on push to master
+jobs:
+  publishDockerImage:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Login to Docker Registry
+      uses: parkr/actions/docker-auth@master
+      with:
+        args: login
+      env:
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_REGISTRY_URL: docker.io
+    - name: Build & publish
+      uses: parkr/actions/docker-make@master
+      with:
+        args: docker-release -e REV=${{ github.sha }}
