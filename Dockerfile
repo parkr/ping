@@ -1,13 +1,11 @@
-FROM golang:1.14.3 as builder
+FROM golang:1.15 as builder
 WORKDIR /go/src/github.com/parkr/ping
 EXPOSE 3306
 COPY . .
 RUN go version
-RUN go install github.com/parkr/ping/...
+RUN go install github.com/parkr/ping/... && ls -l /go/bin
 
-FROM scratch
 HEALTHCHECK --start-period=1s --interval=30s --timeout=5s --retries=1 \
-  CMD [ "/bin/ping-healthcheck" ]
-COPY --from=builder /go/bin/ping-healthcheck /bin/ping-healthcheck
-COPY --from=builder /go/bin/ping /bin/ping-server
-ENTRYPOINT [ "/bin/ping-server" ]
+  CMD [ "/go/bin/ping-healthcheck" ]
+
+ENTRYPOINT [ "/go/bin/ping" ]

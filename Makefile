@@ -23,3 +23,6 @@ docker-test: docker-build
 
 docker-release: docker-build
 	docker push parkr/ping:$(REV)
+
+dive: docker-build
+	dive parkr/ping:$(REV)

@@ -1,13 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/parkr/gossip/serializer"
 )
 
-func writeJsonResponse(w http.ResponseWriter, json interface{}) {
+func writeJsonResponse(w http.ResponseWriter, input interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, serializer.MarshalJson(json))
+	data, err := json.Marshal(input)
+	if err != nil {
+		fmt.Fprintf(w, `{"error":"json, `+err.Error()+`"}`)
+	} else {
+		w.Write(data)
+	}
 }
