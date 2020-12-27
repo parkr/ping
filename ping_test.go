@@ -101,7 +101,11 @@ func TestPingSuccess(t *testing.T) {
 	*whitelist = "example.org"
 
 	if db == nil {
-		db = database.Initialize()
+		var err error
+		db, err = database.Initialize()
+		if err != nil {
+			t.Fatalf("unexpected error initializing database: %+v", err)
+		}
 	}
 
 	visitCountStart, _ := analytics.ViewsForPath(db, "/root")

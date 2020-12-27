@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/parkr/ping
 EXPOSE 3306
 COPY . .
 RUN go version
-RUN CGO_ENABLED=0 go install github.com/parkr/ping/...
+RUN go install github.com/parkr/ping/...
 
 FROM scratch
 HEALTHCHECK --start-period=1s --interval=30s --timeout=5s --retries=1 \

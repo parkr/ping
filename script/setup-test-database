@@ -1,4 +1,0 @@
-#!/bin/bash
-. script/test-env
-mysql -e "create database IF NOT EXISTS $DATABASE_NAME;" -u root
-./ping-initialize-db

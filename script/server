@@ -1,2 +1,2 @@
 #!/bin/bash
-script/build && PORT=8972 PING_DB=ping@/ping ./ping
+script/build && PORT=8972 PING_DB=./data/ping_development.sqlite3 ./ping

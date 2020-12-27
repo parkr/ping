@@ -1,3 +1,2 @@
-#!/bin/bash
-export DATABASE_NAME="ping_test"
-export PING_DB="root@/$DATABASE_NAME"
+#!/bin/bashw
+export PING_DB="./data/ping_test.sqlite3"

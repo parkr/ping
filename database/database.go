@@ -4,24 +4,23 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
-	// This is the format for a MySQL Datetime Literal.
-	MySQLDateTimeFormat = "2006-01-02 15:04:05"
+	// This is the format for a SQL Datetime Literal.
+	SQLDateTimeFormat = "2006-01-02 15:04:05"
 
 	schema = `CREATE TABLE visits (
-		id int(11) NOT NULL AUTO_INCREMENT,
+		id integer NOT NULL PRIMARY KEY AUTOINCREMENT,
     	ip varchar(255) NOT NULL,
     	host text NOT NULL,
-      user_agent text NOT NULL,
+      	user_agent text NOT NULL,
     	path text NOT NULL,
-		created_at datetime NOT NULL,
-		PRIMARY KEY (id)
-	) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;`
-	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'visits'`
+		created_at datetime NOT NULL
+	);`
+	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM sqlite_master WHERE type='table' AND name='visits';`
 	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
 )
 
@@ -30,7 +29,7 @@ type TableCheck struct {
 }
 
 func Initialize() (*sqlx.DB, error) {
-	db, err := sqlx.Connect("mysql", os.Getenv("PING_DB"))
+	db, err := sqlx.Connect("sqlite3", os.Getenv("PING_DB"))
 	if err != nil {
 		return nil, err
 	}

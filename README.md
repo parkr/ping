@@ -39,8 +39,7 @@ Want to run ping? No problem.
 
 ```bash
 $ go get github.com/parkr/ping
-$ mysql -e 'create database ping;'
-$ PING_DB=user:passwd@localhost/ping ping -http=:8972
+$ PING_DB=./ping_production.sqlite3 ping -http=:8972
 ```
 
 Specify a port (defaults to `8000`) and a database URL and you're off to
@@ -52,13 +51,13 @@ invoking `ping` and you're good to go.
 Prefer Docker? We got that too!
 
 ```bash
-$ mysql -e 'create database ping;'
+$ mkdir data
 $ docker run --rm \
-  -e PING_DB=user:passwd@host-ip/ping \
+  -e PING_DB=/srv/data/ping_production.sqlite3 \
+  -v $(pwd)/data:/srv/data:rw \
   parkr/ping \
   ping -http=:8972
 ```
 
-Ensure that your Docker container is given access to the server MySQL is
-running on and that MySQL's `bind-address` host is `0.0.0.0` so it can be
-accessed by others. Or, use a MySQL proxy.
+This will save all data to the specified sqlite3 database,
+mounted to the container and written back to the host.

@@ -11,10 +11,9 @@ build:
 
 testdeps:
 	go build $(PKG)/cmd/ping-initialize-db
-	script/setup-test-database
 
 test: testdeps
-	. script/test-env && go test ./...
+	. script/test-env && go test -v ./...
 
 docker-build:
 	docker build -t parkr/ping:$(REV) .

@@ -1,17 +1,25 @@
 package analytics
 
 import (
+	"log"
 	"os"
 	"testing"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/parkr/ping/database"
 )
 
-var db = sqlx.MustConnect("mysql", os.Getenv("PING_DB"))
+var db *sqlx.DB
 
 func init() {
-	db.MustExec(`INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES ('127.0.0.1', 'example.org', '/root', 'go test client', NOW())`)
+	var err error
+	db, err = database.Initialize()
+	if err != nil {
+		log.Printf("Error connecting to db '%s'", os.Getenv("PING_DB"))
+		panic(err)
+	}
+	db.MustExec(`INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES ('127.0.0.1', 'example.org', '/root', 'go test client', datetime('now'))`)
 }
 
 func TestVisitorsForPath(t *testing.T) {

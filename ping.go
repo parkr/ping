@@ -109,7 +109,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		Host:      url.Host,
 		Path:      url.Path,
 		UserAgent: userAgent,
-		CreatedAt: time.Now().UTC().Format(database.MySQLDateTimeFormat),
+		CreatedAt: time.Now().UTC().Format(database.SQLDateTimeFormat),
 	}
 	log.Println("Logging visit:", visit.String())
 
@@ -193,7 +193,11 @@ func main() {
 	flag.StringVar(&binding, "http", ":"+defaultPort, "The IP/port to bind to.")
 	flag.Parse()
 
-	db, _ = database.Initialize()
+	var err error
+	db, err = database.Initialize()
+	if err != nil {
+		log.Fatalf("unable to initialize db: %+v", err)
+	}
 
 	http.HandleFunc("/_health", health)
 	http.HandleFunc("/ping", ping)
