@@ -61,3 +61,21 @@ $ docker run --rm \
 
 This will save all data to the specified sqlite3 database,
 mounted to the container and written back to the host.
+
+Then, load the script on your pages in the HTML:
+
+```html
+<script src="https://domain.for.ping.server/ping.js" type="text/javascript"></script>
+```
+
+Every page will load this `/ping.js` path from the `ping` server and will
+log the result to your sqlite3 database in the `visits` table.
+
+If you set the `-hosts` flag for the `ping` executable, you can limit which
+hostnames will be logged. This is a security feature to ensure your sqlite3
+database doesn't bloat with unwanted data from sites you don't want to
+track. For example, adding the flag `-hosts=example.com,my-site.com,mysite.rocks`
+will only log visits to your database for visits to `example.com`,
+`my-site.com`, and `mysite.rocks`. Of course, these sites have to load the
+javascript path as specified above, so this will only work for sites you
+control.
