@@ -1,4 +1,4 @@
-FROM golang:latest as builder
+FROM golang:1.18.1-buster as builder
 WORKDIR /go/src/github.com/parkr/ping
 EXPOSE 3306
 COPY . .
