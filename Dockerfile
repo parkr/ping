@@ -1,4 +1,4 @@
-FROM golang:1.18.1-bullseye as builder
+FROM golang:1.18.2-bullseye as builder
 WORKDIR /go/src/github.com/parkr/ping
 EXPOSE 3306
 COPY . .
