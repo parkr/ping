@@ -6,7 +6,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Build & Test
-      uses: parkr/actions/docker-make@main
+    - name: set up qemu virt with platforms
+      uses: docker/setup-qemu-action@v2
       with:
-        args: docker-build -e REV=${{ github.sha }}
+        platforms: arm64,arm
+    - name: set up docker buildx builder with platforms
+      uses: docker/setup-buildx-action@v2
+      with:
+        platforms: linux/amd64,linux/arm64,linux/arm/v7
+    - name: create metadata (tags and labels)
+      uses: docker/metadata-action@v4
+      id: meta
+      with:
+        images: parkr/ping
+        flavor: |
+          latest=false
+        tags: |
+          type=raw,value=${{ github.sha }}
+        labels: |
+          org.opencontainers.image.documentation=https://github.com/${{github.repository}}#readme
+          org.opencontainers.image.licenses=MIT
+    - name: build test image
+      uses: docker/build-push-action@v4
+      with:
+        context: all
+        load: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: OCTODNS_FLAVOR=${{ matrix.flavor }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    - name: test image has executables on PATH
+      run: |
+        docker run --rm ${{ steps.meta.outputs.tags }} which ping
+    - name: test image executable will run
+      run: |
+        docker run --rm ${{ steps.meta.outputs.tags }} ping -h
