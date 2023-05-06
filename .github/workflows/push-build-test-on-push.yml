@@ -36,9 +36,6 @@ jobs:
         build-args: OCTODNS_FLAVOR=${{ matrix.flavor }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    - name: test image has executables on PATH
-      run: |
-        docker run --rm ${{ steps.meta.outputs.tags }} which ping
     - name: test image executable will run
       run: |
-        docker run --rm ${{ steps.meta.outputs.tags }} ping -h
+        docker run --rm ${{ steps.meta.outputs.tags }} -h
