@@ -1,8 +1,8 @@
 on: push
 name: Build & test
 jobs:
-  buildAndTest:
-    name: Build & Test
+  build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -39,3 +39,12 @@ jobs:
     - name: test image executable will run
       run: |
         docker run --rm ${{ steps.meta.outputs.tags }} -h
+  test:
+    name: Run Go Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v4
+      with:
+        go-version: "1.20"
+    - run: go test ./...
