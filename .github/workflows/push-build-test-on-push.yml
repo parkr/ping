@@ -39,7 +39,7 @@ jobs:
       run: |
         docker run --rm ${{ steps.meta.outputs.tags }} -h
     - name: login to the Docker registry
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
       with:
         registry: docker.io
