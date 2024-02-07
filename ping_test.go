@@ -96,7 +96,7 @@ func TestPingEmptyUserAgent(t *testing.T) {
 }
 
 // BUG(jussi): Might crash because database check in database.go's init() will most
-//             likely return true because `checkIfSchemaExists` query doesn't include DB
+// likely return true because `checkIfSchemaExists` query doesn't include DB
 func TestPingSuccess(t *testing.T) {
 	*whitelist = "example.org"
 
