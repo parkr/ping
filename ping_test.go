@@ -12,9 +12,9 @@ import (
 )
 
 // Tests white listing.
-// Hosts can be whitelisted so other sites can't mess with page views.
+// Hosts can be allowlisted so other sites can't mess with page views.
 func TestAllowedHost(t *testing.T) {
-	*whitelist = "example.org"
+	*hostAllowlist = "example.org"
 
 	if allowedHost("badexample.org") {
 		t.Error("Host badexample.org shouldn't be allowed to access")
@@ -98,7 +98,7 @@ func TestPingEmptyUserAgent(t *testing.T) {
 // BUG(jussi): Might crash because database check in database.go's init() will most
 // likely return true because `checkIfSchemaExists` query doesn't include DB
 func TestPingSuccess(t *testing.T) {
-	*whitelist = "example.org"
+	*hostAllowlist = "example.org"
 
 	if db == nil {
 		var err error

@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	allowedHosts []string
-	whitelist    = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
+	allowedHosts  []string
+	hostAllowlist = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
 )
 
 const returnedJavaScript = "(function(){})();"
@@ -45,12 +45,12 @@ func javascriptRespond(w http.ResponseWriter, code int, err string) {
 }
 
 func allowedHost(host string) bool {
-	if whitelist == nil || *whitelist == "" {
+	if hostAllowlist == nil || *hostAllowlist == "" {
 		return true
 	}
 
 	if len(allowedHosts) == 0 {
-		allowedHosts = strings.Split(*whitelist, ",")
+		allowedHosts = strings.Split(*hostAllowlist, ",")
 	}
 
 	for _, allowed := range allowedHosts {
