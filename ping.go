@@ -145,6 +145,7 @@ func counts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		addCorsHeaders(w, r)
 		writeJsonResponse(w, map[string]int{
 			"views":    views,
 			"visitors": visitors,
@@ -163,6 +164,7 @@ func all(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		addCorsHeaders(w, r)
 		writeJsonResponse(w, map[string][]string{"entries": entries})
 	} else {
 		http.Error(w, "Missing param", 400)
