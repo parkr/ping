@@ -108,7 +108,7 @@ func TestPingSuccess(t *testing.T) {
 		}
 	}
 
-	visitCountStart, _ := analytics.ViewsForPath(db, "/root")
+	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/root")
 
 	request, err := http.NewRequest("GET", "/ping", nil)
 	if err != nil {
@@ -134,7 +134,7 @@ func TestPingSuccess(t *testing.T) {
 			recorder.Body.String(), expected)
 	}
 
-	visitCountEnd, _ := analytics.ViewsForPath(db, "/root")
+	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/root")
 
 	if visitCountEnd <= visitCountStart {
 		t.Errorf("visit was not saved, got %v want %v",
@@ -165,8 +165,32 @@ func TestCountsMissingParam(t *testing.T) {
 	}
 }
 
-func TestCountsValid(t *testing.T) {
+func TestCountsMissingHostParam(t *testing.T) {
 	request, err := http.NewRequest("POST", "/counts", strings.NewReader("path=/root"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(counts)
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "Missing param\n"
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got '%v' want %v",
+			recorder.Body.String(), expected)
+	}
+}
+
+func TestCountsValid(t *testing.T) {
+	request, err := http.NewRequest("POST", "/counts", strings.NewReader("path=/root&host=example.org"))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if err != nil {

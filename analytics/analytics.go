@@ -2,14 +2,15 @@ package analytics
 
 import (
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
 )
 
 const (
-	// Count the number of distinct IP addresses which have visitied the path.
-	QueryVisitorsPerPath = `SELECT COUNT(distinct ip) FROM visits WHERE path = ?;`
-	// Count the number of entries with the given path.
-	QueryVisitsPerPath = `SELECT COUNT(id) FROM visits WHERE path = ?;`
+	// Count the number of distinct IP addresses which have visited the host & path.
+	QueryVisitorsPerHostPath = `SELECT COUNT(distinct ip) FROM visits WHERE host = ? AND path = ?;`
+	// Count the number of entries with the given host & path.
+	QueryVisitsPerHostPath = `SELECT COUNT(id) FROM visits WHERE host = ? AND path = ?;`
 
 	// List all the distinct paths in the database.
 	QueryAllPaths = `SELECT DISTINCT path FROM visits;`
@@ -19,14 +20,14 @@ const (
 
 // Fetch a count of all the visitors for the given path. This is done by
 // counting the distinct IP addresses which have visited the path.
-func VisitorsForPath(db *sqlx.DB, path string) (count int, err error) {
-	err = db.Get(&count, QueryVisitorsPerPath, path)
+func VisitorsForHostPath(db *sqlx.DB, host string, path string) (count int, err error) {
+	err = db.Get(&count, QueryVisitorsPerHostPath, host, path)
 	return count, err
 }
 
 // Fetch a count of all the views of the path.
-func ViewsForPath(db *sqlx.DB, path string) (count int, err error) {
-	err = db.Get(&count, QueryVisitsPerPath, path)
+func ViewsForHostPath(db *sqlx.DB, host string, path string) (count int, err error) {
+	err = db.Get(&count, QueryVisitsPerHostPath, host, path)
 	return count, err
 }
 
@@ -44,6 +45,13 @@ func AllHosts(db *sqlx.DB) (hosts []string, err error) {
 
 // Fetch the distinct entries of an arbitrary column in the database.
 func ListDistinctColumn(db *sqlx.DB, col string) (entries []string, err error) {
-	err = db.Select(&entries, fmt.Sprintf("SELECT DISTINCT %s FROM visits;", col))
+	switch col {
+	case "host":
+		err = db.Select(&entries, "SELECT DISTINCT host FROM visits;")
+	case "path":
+		err = db.Select(&entries, "SELECT DISTINCT path FROM visits;")
+	default:
+		return []string{}, fmt.Errorf("unable to query distinct column %s", col)
+	}
 	return entries, err
 }

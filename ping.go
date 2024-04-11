@@ -125,20 +125,21 @@ func ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func counts(w http.ResponseWriter, r *http.Request) {
+	host := r.FormValue("host")
 	path := r.FormValue("path")
 
 	var err error
 	var views, visitors int
-	if path == "" {
+	if host == "" || path == "" {
 		http.Error(w, "Missing param", 400)
 	} else {
-		views, err = analytics.ViewsForPath(db, path)
+		views, err = analytics.ViewsForHostPath(db, host, path)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		visitors, err = analytics.VisitorsForPath(db, path)
+		visitors, err = analytics.VisitorsForHostPath(db, host, path)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

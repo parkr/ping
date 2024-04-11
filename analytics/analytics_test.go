@@ -19,23 +19,26 @@ func init() {
 		log.Printf("Error connecting to db '%s'", os.Getenv("PING_DB"))
 		panic(err)
 	}
-	db.MustExec(`INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES ('127.0.0.1', 'example.org', '/root', 'go test client', datetime('now'))`)
+	db.MustExec(`
+		INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES
+		('127.0.0.1', 'example.org', '/root', 'go test client', datetime('now')),
+		('127.0.0.1', 'example.org', '/foo', 'go test client', datetime('now'));`)
 }
 
 func TestVisitorsForPath(t *testing.T) {
-	visitors, err := VisitorsForPath(db, "/root")
+	visitors, err := VisitorsForHostPath(db, "example.org", "/root")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if visitors < 0 {
-		t.Error("Visitors should exists")
+	if visitors != 1 {
+		t.Errorf("expected 1 visitor, got: %d", visitors)
 	}
 }
 
-func TestViewsForPath(t *testing.T) {
-	views, err := VisitorsForPath(db, "/root")
+func TestViewsForHostPath(t *testing.T) {
+	views, err := ViewsForHostPath(db, "example.org", "/root")
 
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +60,16 @@ func TestAllPaths(t *testing.T) {
 
 	if paths[0] != expected {
 		t.Errorf("Got %v want %v", paths[0], expected)
+	}
+
+	expected = "/foo"
+
+	if paths[1] != expected {
+		t.Errorf("Got %v want: %v", paths[1], expected)
+	}
+
+	if len(paths) > 2 {
+		t.Errorf("Got %d paths, want 1", len(paths))
 	}
 }
 
@@ -85,6 +98,10 @@ func TestListDistinctColumnHost(t *testing.T) {
 
 	if hosts[0] != expected {
 		t.Errorf("Got %v want %v", hosts[0], expected)
+	}
+
+	if len(hosts) > 1 {
+		t.Errorf("Got %d hosts, wanted 1", len(hosts))
 	}
 }
 
