@@ -28,7 +28,7 @@ func TestPingEmptyReferrer(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ping)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -54,7 +54,7 @@ func TestPingUnauthorizedHost(t *testing.T) {
 	request.Header.Set("Referer", "http://mehehe.org")
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ping)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusForbidden {
@@ -79,7 +79,7 @@ func TestPingEmptyUserAgent(t *testing.T) {
 	request.Header.Set("Referer", "http://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ping)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -92,6 +92,38 @@ func TestPingEmptyUserAgent(t *testing.T) {
 	if recorder.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			recorder.Body.String(), expected)
+	}
+}
+
+func TestPingRequestNotToTrack(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://example.org")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set(DoNotTrackHeaderName, DoNotTrackHeaderValue)
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := `(function(){})();`
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			recorder.Body.String(), expected)
+	}
+
+	actual := recorder.Header().Get(DoNotTrackHeaderName)
+	if actual != DoNotTrackHeaderValue {
+		t.Errorf("Expected %s: %s, got: %v", DoNotTrackHeaderName, DoNotTrackHeaderValue, actual)
 	}
 }
 
@@ -119,7 +151,7 @@ func TestPingSuccess(t *testing.T) {
 	request.Header.Set("User-Agent", "go test client")
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(ping)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusCreated {
@@ -142,6 +174,36 @@ func TestPingSuccess(t *testing.T) {
 	}
 }
 
+func TestCountsOptionsPreflight(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest(http.MethodOptions, "/counts", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusNoContent {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNoContent)
+	}
+
+	expectedAllowedHosts := "https://example.org"
+	actual := recorder.Header().Get("Access-Control-Allow-Origin")
+	if actual != expectedAllowedHosts {
+		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
+	}
+
+	expectedAllowedMethods := "GET"
+	actual = recorder.Header().Get("Access-Control-Allow-Methods")
+	if actual != expectedAllowedMethods {
+		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
+	}
+}
+
 func TestCountsMissingParam(t *testing.T) {
 	request, err := http.NewRequest("POST", "/counts", nil)
 	if err != nil {
@@ -149,7 +211,7 @@ func TestCountsMissingParam(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(counts)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -173,7 +235,7 @@ func TestCountsMissingHostParam(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(counts)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -198,7 +260,7 @@ func TestCountsValid(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(counts)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusOK {
@@ -231,6 +293,34 @@ func TestCountsValid(t *testing.T) {
 
 }
 
+func TestAllOptionsPreflight(t *testing.T) {
+	request, err := http.NewRequest(http.MethodOptions, "/all", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusNoContent {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNoContent)
+	}
+
+	expectedAllowedHosts := "https://example.org"
+	actual := recorder.Header().Get("Access-Control-Allow-Origin")
+	if actual != expectedAllowedHosts {
+		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
+	}
+
+	expectedAllowedMethods := "GET"
+	actual = recorder.Header().Get("Access-Control-Allow-Methods")
+	if actual != expectedAllowedMethods {
+		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
+	}
+}
+
 func TestAllHost(t *testing.T) {
 	request, err := http.NewRequest("POST", "/all", strings.NewReader("type=host"))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -240,7 +330,7 @@ func TestAllHost(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(all)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusOK {
@@ -274,7 +364,7 @@ func TestAllPath(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(all)
+	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusOK {
