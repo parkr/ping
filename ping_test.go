@@ -181,6 +181,7 @@ func TestCountsOptionsPreflight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	request.Header.Add("Origin", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -298,6 +299,7 @@ func TestAllOptionsPreflight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	request.Header.Add("Origin", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()

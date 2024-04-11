@@ -1,6 +1,10 @@
 package main
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+	"net/url"
+)
 
 type corsHandler struct {
 	next http.HandlerFunc
@@ -10,15 +14,27 @@ type corsHandler struct {
 func (c *corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
-		addCorsHeaders(w)
+		addCorsHeaders(w, r)
 		return
 	}
 	c.next.ServeHTTP(w, r)
 }
 
-func addCorsHeaders(w http.ResponseWriter) {
+func addCorsHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	for _, allowedHost := range allowedHosts {
-		w.Header().Add("Access-Control-Allow-Origin", "https://"+allowedHost)
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		parsedOrigin, err := url.Parse(origin)
+		if err != nil {
+			log.Printf("unable to parse origin %q: %v", origin, err)
+		} else {
+			originHostname := parsedOrigin.Hostname()
+			for _, allowedHost := range allowedHosts {
+				if allowedHost == originHostname {
+					w.Header().Set("Access-Control-Allow-Origin", "https://"+allowedHost)
+					break
+				}
+			}
+		}
 	}
 }
