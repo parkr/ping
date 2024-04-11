@@ -26,7 +26,7 @@ func addCorsHeaders(w http.ResponseWriter, r *http.Request) {
 	if origin != "" {
 		parsedOrigin, err := url.Parse(origin)
 		if err != nil {
-			log.Printf("unable to parse origin: %v", origin)
+			log.Printf("unable to parse origin %q: %v", origin, err)
 		} else {
 			originHostname := parsedOrigin.Hostname()
 			for _, allowedHost := range allowedHosts {
