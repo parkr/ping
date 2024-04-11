@@ -1,6 +1,6 @@
 module github.com/parkr/ping
 
-go 1.14
+go 1.22
 
 require (
 	github.com/jmoiron/sqlx v1.3.5
