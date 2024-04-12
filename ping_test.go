@@ -133,12 +133,10 @@ func TestPingRequestNotToTrack(t *testing.T) {
 func TestPingSuccess(t *testing.T) {
 	*hostAllowlist = "example.org"
 
-	if db == nil {
-		var err error
-		db, err = database.Initialize()
-		if err != nil {
-			t.Fatalf("unexpected error initializing database: %+v", err)
-		}
+	var err error
+	db, err = database.InitializeForTest()
+	if err != nil {
+		t.Fatalf("unexpected error initializing database: %+v", err)
 	}
 
 	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/root")

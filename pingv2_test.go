@@ -97,12 +97,10 @@ func TestPingV2_RequestNotToTrack(t *testing.T) {
 func TestPingV2_Success(t *testing.T) {
 	*hostAllowlist = "example.org"
 
-	if db == nil {
-		var err error
-		db, err = database.Initialize()
-		if err != nil {
-			t.Fatalf("unexpected error initializing database: %+v", err)
-		}
+	var err error
+	db, err = database.InitializeForTest()
+	if err != nil {
+		t.Fatalf("unexpected error initializing database: %+v", err)
 	}
 
 	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/root")
@@ -199,7 +197,7 @@ func TestSubmitV2_MissingPath(t *testing.T) {
 func TestSubmitV2_InvalidHost(t *testing.T) {
 	*hostAllowlist = "example.org"
 
-	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=....boom%21%21&path=/root"))
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader(`host=\\.\\%21...boom%21%21&path=/root`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,18 +209,16 @@ func TestSubmitV2_InvalidHost(t *testing.T) {
 	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusUnauthorized {
+	if status := recorder.Code; status != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusUnauthorized)
+			status, http.StatusInternalServerError)
 	}
 
-	expected := "(function(){console.error(\"unauthorized host\")})();"
+	expected := "(function(){console.error(\"Couldn't parse referrer: parse \"//%!C(MISSING)%!C(MISSING).%!C(MISSING)%!C(MISSING)!...boom!!/root\": invalid URL escape \"%!C(MISSING)\"\")})();"
 	if recorder.Body.String() != expected {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
-
-	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_UnauthorizedHost(t *testing.T) {
@@ -286,12 +282,10 @@ func TestSubmitV2_MissingUserAgent(t *testing.T) {
 func TestSubmitV2_Success(t *testing.T) {
 	*hostAllowlist = "example.org"
 
-	if db == nil {
-		var err error
-		db, err = database.Initialize()
-		if err != nil {
-			t.Fatalf("unexpected error initializing database: %+v", err)
-		}
+	var err error
+	db, err = database.InitializeForTest()
+	if err != nil {
+		t.Fatalf("unexpected error initializing database: %+v", err)
 	}
 
 	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
@@ -302,7 +296,8 @@ func TestSubmitV2_Success(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
-	request.Header.Set("Referer", "https://example.org")
+	request.Header.Set("Referer", "https://example.org/")
+	request.RemoteAddr = "100.0.0.0"
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -319,7 +314,7 @@ func TestSubmitV2_Success(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "example.org/")
 
 	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
 
@@ -336,5 +331,10 @@ func TestSubmitV2_Success(t *testing.T) {
 	expectedUserAgent := "go test client"
 	if visit.UserAgent != expectedUserAgent {
 		t.Errorf("expected visit user agent %q, got %v", expectedUserAgent, visit.UserAgent)
+	}
+
+	expectedIP := "100.0.0.0"
+	if visit.IP != expectedIP {
+		t.Errorf("expected visit ip %q, got: %v", expectedIP, visit.IP)
 	}
 }

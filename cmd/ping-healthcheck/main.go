@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -21,7 +21,7 @@ func main() {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		log.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(body))
 	}
 }
