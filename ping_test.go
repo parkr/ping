@@ -326,7 +326,6 @@ func TestStats_Success(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 
 	assertStatusCode(t, recorder, http.StatusOK)
-
 	verifyCorsHeaders(t, recorder, pingBaseURL)
 
 	allExpectedBodyContents := []string{

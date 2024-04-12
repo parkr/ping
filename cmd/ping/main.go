@@ -27,6 +27,9 @@ func main() {
 	ping.Initialize(os.Getenv("PING_DB"))
 
 	allowedHosts := strings.Split(hostAllowlist, ",")
+	log.Printf("allowing the following hosts: %v", allowedHosts)
+
+	log.Printf("base url: %q", pingBaseURL)
 
 	http.Handle("/", ping.NewHandler(allowedHosts, pingBaseURL))
 
