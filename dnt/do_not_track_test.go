@@ -1,4 +1,4 @@
-package main
+package dnt
 
 import (
 	"net/http"
@@ -17,7 +17,7 @@ func TestRequestsDoNotTrack(t *testing.T) {
 		"Dnt": {DoNotTrackHeaderValue},
 	})}
 
-	if !requestsDoNotTrack(req) {
+	if !RequestsDoNotTrack(req) {
 		t.Fatalf("expected DNT header to be respected, headers: %+v, %s header: %+v",
 			req.Header,
 			textproto.CanonicalMIMEHeaderKey(DoNotTrackHeaderName),
@@ -27,16 +27,16 @@ func TestRequestsDoNotTrack(t *testing.T) {
 	// Header is not set. We can track this request.
 	req = &http.Request{Header: map[string][]string{}}
 
-	if requestsDoNotTrack(req) {
+	if RequestsDoNotTrack(req) {
 		t.Fatalf("expected lack of DNT header to mean we can track")
 	}
 
 	// Header is not set correctly. We can track this request.
 	req = &http.Request{Header: map[string][]string{
-		"Dnt": []string{"!"},
+		"Dnt": {"!"},
 	}}
 
-	if requestsDoNotTrack(req) {
+	if RequestsDoNotTrack(req) {
 		t.Fatalf("expected value of DNT header to mean we can track")
 	}
 }

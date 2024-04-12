@@ -7,13 +7,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/parkr/ping/analytics"
 	"github.com/parkr/ping/database"
+	"github.com/parkr/ping/dnt"
+	"github.com/parkr/ping/jsv1"
+	"github.com/parkr/ping/jsv2"
 )
 
 var (
@@ -21,28 +23,7 @@ var (
 	hostAllowlist = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
 )
 
-const returnedJavaScript = "(function(){})();"
-const lengthOfJavaScript = "17"
-
 var db *sqlx.DB
-
-func javascriptRespond(w http.ResponseWriter, code int, err string) {
-	w.WriteHeader(code)
-
-	var content string
-	if err == "" {
-		content = returnedJavaScript
-	} else if err == "not tracked" {
-		content = returnedJavaScript
-		w.Header().Set(DoNotTrackHeaderName, DoNotTrackHeaderValue)
-	} else {
-		content = fmt.Sprintf(`(function(){console.error("%s")})();`, err)
-	}
-
-	w.Header().Set("Content-Type", "application/javascript")
-	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
-	fmt.Fprintf(w, content)
-}
 
 func allowedHost(host string) bool {
 	if hostAllowlist == nil || *hostAllowlist == "" {
@@ -61,17 +42,31 @@ func allowedHost(host string) bool {
 	return ok
 }
 
+// ping routes to pingv1 or pingv2 depending on the version code in the form.
 func ping(w http.ResponseWriter, r *http.Request) {
-	if requestsDoNotTrack(r) {
+	version := r.FormValue("v")
+	switch version {
+	case "2":
+		pingv2(w, r)
+	default:
+		pingv1(w, r)
+	}
+}
+
+// pingv1 implements the referer-based logging.
+// When a request comes in, the referer and remote IP (or X-Forwarded-For)
+// are used to write the ping entry.
+func pingv1(w http.ResponseWriter, r *http.Request) {
+	if dnt.RequestsDoNotTrack(r) {
 		log.Println("dnt requested")
-		javascriptRespond(w, http.StatusOK, "not tracked")
+		jsv1.DoNotTrack(w)
 		return
 	}
 
 	referrer := r.Referer()
 	if referrer == "" {
 		log.Println("empty referrer")
-		javascriptRespond(w, http.StatusBadRequest, "empty referrer")
+		jsv1.Error(w, http.StatusBadRequest, "empty referrer")
 		return
 	}
 
@@ -79,13 +74,13 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("invalid referrer:", sanitizeUserInput(referrer))
-		javascriptRespond(w, 500, "Couldn't parse referrer: "+err.Error())
+		jsv1.Error(w, http.StatusInternalServerError, "Couldn't parse referrer: "+err.Error())
 		return
 	}
 
 	if !allowedHost(url.Host) {
 		log.Println("unauthorized host:", sanitizeUserInput(url.Host))
-		javascriptRespond(w, 403, "love the host, except noooope.")
+		jsv1.Error(w, http.StatusUnauthorized, "unauthorized host")
 		return
 	}
 
@@ -100,7 +95,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("User-Agent")
 	if userAgent == "" {
 		log.Println("empty user-agent")
-		javascriptRespond(w, http.StatusBadRequest, "empty user-agent")
+		jsv1.Error(w, http.StatusBadRequest, "empty user-agent")
 		return
 	}
 
@@ -117,11 +112,70 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println("Error saving to db:", err)
-		javascriptRespond(w, 500, err.Error())
+		jsv1.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	javascriptRespond(w, 201, "")
+	jsv1.Write(w, http.StatusCreated)
+}
+
+// pingv2 implements the js-based logging.
+// When a request comes in, it returns JS that will call /submit.js to capture
+// the full path of the page visited.
+func pingv2(w http.ResponseWriter, r *http.Request) {
+	if dnt.RequestsDoNotTrack(r) {
+		log.Println("dnt requested")
+		jsv1.DoNotTrack(w)
+		return
+	}
+
+	referrer := r.Referer()
+	if referrer == "" {
+		log.Println("empty referrer")
+		jsv1.Error(w, http.StatusBadRequest, "empty referrer")
+		return
+	}
+
+	url, err := url.Parse(referrer)
+
+	if err != nil {
+		log.Println("invalid referrer:", sanitizeUserInput(referrer))
+		jsv1.Error(w, http.StatusInternalServerError, "Couldn't parse referrer: "+err.Error())
+		return
+	}
+
+	if !allowedHost(url.Host) {
+		log.Println("unauthorized host:", sanitizeUserInput(url.Host))
+		jsv1.Error(w, http.StatusUnauthorized, "unauthorized host")
+		return
+	}
+
+	jsv2.Write(w, http.StatusOK)
+}
+
+// submitv2 takes an XHR request with the host & path in the form and rewrites
+// as a pingv1 request using the referer.
+func submitv2(w http.ResponseWriter, r *http.Request) {
+	host := r.FormValue("host")
+	path := r.FormValue("path")
+	if host == "" || path == "" {
+		jsv1.Error(w, http.StatusBadRequest, "missing param")
+		return
+	}
+	referer := url.URL{Host: host, Path: path}
+
+	req, err := http.NewRequest(http.MethodGet, "/ping.js", nil)
+	if err != nil {
+		jsv1.Error(w, http.StatusInternalServerError, "unable to rewrite")
+		return
+	}
+	req.Header.Set("Referer", referer.String())
+	req.Header.Set("User-Agent", r.Header.Get("User-Agent"))
+	req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+
+	log.Printf("forwarding v2 to v1")
+
+	pingv1(w, req)
 }
 
 func counts(w http.ResponseWriter, r *http.Request) {
@@ -191,6 +245,8 @@ func buildHandler() *http.ServeMux {
 	mux.HandleFunc("/_health", health)
 	mux.HandleFunc("/ping", ping)
 	mux.HandleFunc("/ping.js", ping)
+	mux.HandleFunc("/submit", submitv2)
+	mux.HandleFunc("/submit.js", submitv2)
 	mux.Handle("/counts", &corsHandler{counts})
 	mux.Handle("/all", &corsHandler{all})
 	return mux
