@@ -40,10 +40,13 @@ func (c corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c corsHandler) addCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	log.Printf("cors: adding headers for %q", r.URL.Path)
 	w.Header().Set(CorsAccessControlAllowMethodsHeaderName, "GET, POST")
 	if sanitizedOrigin, ok := c.allowCORSOrigin(r.Header.Get("Origin")); ok {
+		log.Printf("cors: sanitized origin %q", sanitizedOrigin)
 		w.Header().Set(CorsAccessControlAllowOriginHeaderName, sanitizedOrigin)
 	} else if sanitizedOrigin, ok := c.allowCORSOrigin(r.Referer()); ok {
+		log.Printf("cors: sanitized referer %q", sanitizedOrigin)
 		w.Header().Set(CorsAccessControlAllowOriginHeaderName, sanitizedOrigin)
 	}
 }
@@ -61,10 +64,6 @@ func (c corsHandler) allowCORSOrigin(origin string) (string, bool) {
 	parsedOrigin.Path = ""
 
 	originHostname := parsedOrigin.Hostname()
-	return parsedOrigin.String(), c.allowedHost(originHostname)
-}
-
-func (c corsHandler) allowedHost(hostname string) bool {
-	_, ok := c.allowedHosts[hostname]
-	return ok
+	_, ok := c.allowedHosts[originHostname]
+	return parsedOrigin.String(), ok
 }
