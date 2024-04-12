@@ -60,8 +60,6 @@ func (c corsHandler) allowCORSOrigin(origin string) (string, bool) {
 	}
 	parsedOrigin.Path = ""
 
-	log.Printf("origin=%s allowed=%t", parsedOrigin.String(), c.allowedHost(parsedOrigin.Hostname()))
-
 	originHostname := parsedOrigin.Hostname()
 	return parsedOrigin.String(), c.allowedHost(originHostname)
 }

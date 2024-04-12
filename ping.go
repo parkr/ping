@@ -116,7 +116,6 @@ func (s submitv2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host := r.FormValue("host")
 	path := r.FormValue("path")
 	if host == "" || path == "" {
-		log.Printf("host=%s path=%s", host, path)
 		jsv1.Error(w, http.StatusBadRequest, "missing param")
 		return
 	}
