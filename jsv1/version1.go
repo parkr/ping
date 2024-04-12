@@ -12,7 +12,8 @@ const lengthOfJavaScript = "17"
 func Write(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Content-Length", lengthOfJavaScript)
-
+	// Note: All w.Header() modifications must be made BEFORE this call.
+	w.WriteHeader(code)
 	fmt.Fprintf(w, returnedJavaScript)
 }
 

@@ -108,10 +108,7 @@ func TestPingV2_Success(t *testing.T) {
 	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
+	assertStatusCode(t, recorder, http.StatusOK)
 
 	expected := "function logVisit"
 	if !strings.Contains(recorder.Body.String(), expected) {
@@ -339,10 +336,7 @@ func TestSubmitV2_Success_PreservesXForwardedForOverRemoteAddr(t *testing.T) {
 	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
+	assertStatusCode(t, recorder, http.StatusCreated)
 
 	expected := "(function(){})();"
 	if recorder.Body.String() != expected {
