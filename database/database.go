@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -21,13 +20,23 @@ const (
     	path text NOT NULL,
 		created_at datetime NOT NULL
 	);`
-	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM sqlite_master WHERE type='table' AND name='visits';`
+	checkIfSchemaExists = `SELECT COUNT(*) FROM visits LIMIT 1;`
 	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
 	selectVisit         = `SELECT ip, host, path, user_agent, created_at FROM visits WHERE id = ?`
 )
 
 type TableCheck struct {
 	DoesExist int `db:"does_exist"`
+}
+
+// InitializeForTest creates an in-memory SQL database for tests only.
+func InitializeForTest() (*sqlx.DB, error) {
+	db, err := sqlx.Connect("sqlite3", "") // An empty string appears to create a one-off, in-memory database.
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec(schema)
+	return db, err
 }
 
 func Initialize() (*sqlx.DB, error) {
@@ -73,8 +82,6 @@ func (v *Visit) String() string {
 }
 
 func (v *Visit) Save(db *sqlx.DB) error {
-	result, err := db.NamedExec(insertVisit, v)
-	lastInsertedId, _ := result.LastInsertId()
-	log.Println("inserted id", lastInsertedId)
+	_, err := db.NamedExec(insertVisit, v)
 	return err
 }
