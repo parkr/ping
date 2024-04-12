@@ -87,7 +87,6 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ip string
-	log.Println("X-Forwarded-For:", r.Header.Get(xForwardedForHeaderName))
 	if res := r.Header.Get(xForwardedForHeaderName); res != "" {
 		log.Println("Fetching IP from proxy:", sanitizeUserInput(res))
 		ip = sanitizeUserInput(res)
