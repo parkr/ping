@@ -1,0 +1,340 @@
+package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/parkr/ping/analytics"
+	"github.com/parkr/ping/database"
+	"github.com/parkr/ping/dnt"
+)
+
+func TestPingV2_EmptyReferrer(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping?v=2", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := `(function(){console.error("empty referrer")})();`
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			recorder.Body.String(), expected)
+	}
+
+}
+
+func TestPingV2_UnauthorizedHost(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping?v=2", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://mehehe.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusForbidden)
+	}
+
+	expected := `(function(){console.error("unauthorized host")})();`
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			recorder.Body.String(), expected)
+	}
+}
+
+func TestPingV2_RequestNotToTrack(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping?v=2", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://example.org")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set(dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue)
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := `(function(){})();`
+
+	if recorder.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			recorder.Body.String(), expected)
+	}
+
+	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
+	if actual != dnt.DoNotTrackHeaderValue {
+		t.Errorf("Expected %s: %s, got: %v", dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue, actual)
+	}
+}
+
+// BUG(jussi): Might crash because database check in database.go's init() will most
+// likely return true because `checkIfSchemaExists` query doesn't include DB
+func TestPingV2_Success(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	if db == nil {
+		var err error
+		db, err = database.Initialize()
+		if err != nil {
+			t.Fatalf("unexpected error initializing database: %+v", err)
+		}
+	}
+
+	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/root")
+
+	request, err := http.NewRequest("GET", "/ping?v=2", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://example.org/root")
+	request.Header.Set("User-Agent", "go test client")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusCreated)
+	}
+
+	expected := "function logVisit"
+	if !strings.Contains(recorder.Body.String(), expected) {
+		t.Errorf("pingv2 body does not contain expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/root")
+
+	if visitCountEnd != visitCountStart {
+		t.Errorf("visit was saved but shouldn't have been, got %v want %v",
+			visitCountEnd, visitCountStart)
+	}
+}
+
+func TestSubmitV2_MissingHost(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=&path=/root"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "(function(){console.error(\"missing param\")})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+}
+
+func TestSubmitV2_MissingPath(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path="))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "(function(){console.error(\"missing param\")})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+}
+
+func TestSubmitV2_InvalidHost(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=....boom%21%21&path=/root"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusUnauthorized)
+	}
+
+	expected := "(function(){console.error(\"unauthorized host\")})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+}
+
+func TestSubmitV2_UnauthorizedHost(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=unauthorized.org&path=/root"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusUnauthorized)
+	}
+
+	expected := "(function(){console.error(\"unauthorized host\")})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+}
+
+func TestSubmitV2_MissingUserAgent(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path=/root"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "") // missing
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusBadRequest {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusBadRequest)
+	}
+
+	expected := "(function(){console.error(\"empty user-agent\")})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+}
+
+func TestSubmitV2_Success(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	if db == nil {
+		var err error
+		db, err = database.Initialize()
+		if err != nil {
+			t.Fatalf("unexpected error initializing database: %+v", err)
+		}
+	}
+
+	visitCountStart, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path=/TestSubmitV2_Success"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusCreated)
+	}
+
+	expected := "(function(){})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
+
+	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
+
+	if visitCountEnd != visitCountStart+1 {
+		t.Errorf("visit wasn't saved, got %v want %v",
+			visitCountEnd, visitCountStart+1)
+	}
+
+	visit, err := database.Get(db, 1)
+	if err != nil {
+		t.Errorf("expected no error getting visit from db, got: %v", err)
+	}
+
+	expectedUserAgent := "go test client"
+	if visit.UserAgent != expectedUserAgent {
+		t.Errorf("expected visit user agent %q, got %v", expectedUserAgent, visit.UserAgent)
+	}
+}

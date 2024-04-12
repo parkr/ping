@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -22,6 +23,7 @@ const (
 	);`
 	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM sqlite_master WHERE type='table' AND name='visits';`
 	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
+	selectVisit         = `SELECT ip, host, path, user_agent, created_at FROM visits WHERE id = ?`
 )
 
 type TableCheck struct {
@@ -48,6 +50,16 @@ func Initialize() (*sqlx.DB, error) {
 	return db, nil
 }
 
+func Get(db *sqlx.DB, id int) (Visit, error) {
+	row := db.QueryRow(selectVisit, id)
+	if row.Err() != nil {
+		return Visit{}, row.Err()
+	}
+	visit := Visit{}
+	err := row.Scan(&visit.IP, &visit.Host, &visit.Path, &visit.UserAgent, &visit.CreatedAt)
+	return visit, err
+}
+
 type Visit struct {
 	IP        string `db:"ip"`
 	Host      string `db:"host"`
@@ -61,6 +73,8 @@ func (v *Visit) String() string {
 }
 
 func (v *Visit) Save(db *sqlx.DB) error {
-	_, err := db.NamedExec(insertVisit, v)
+	result, err := db.NamedExec(insertVisit, v)
+	lastInsertedId, _ := result.LastInsertId()
+	log.Println("inserted id", lastInsertedId)
 	return err
 }

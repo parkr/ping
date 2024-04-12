@@ -9,6 +9,7 @@ import (
 
 	"github.com/parkr/ping/analytics"
 	"github.com/parkr/ping/database"
+	"github.com/parkr/ping/dnt"
 )
 
 // Tests white listing.
@@ -57,12 +58,12 @@ func TestPingUnauthorizedHost(t *testing.T) {
 	handler := buildHandler()
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusForbidden {
+	if status := recorder.Code; status != http.StatusUnauthorized {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusForbidden)
 	}
 
-	expected := `(function(){console.error("love the host, except noooope.")})();`
+	expected := `(function(){console.error("unauthorized host")})();`
 
 	if recorder.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
@@ -103,7 +104,7 @@ func TestPingRequestNotToTrack(t *testing.T) {
 
 	request.Header.Set("Referer", "http://example.org")
 	request.Header.Set("User-Agent", "go test client")
-	request.Header.Set(DoNotTrackHeaderName, DoNotTrackHeaderValue)
+	request.Header.Set(dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue)
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -121,9 +122,9 @@ func TestPingRequestNotToTrack(t *testing.T) {
 			recorder.Body.String(), expected)
 	}
 
-	actual := recorder.Header().Get(DoNotTrackHeaderName)
-	if actual != DoNotTrackHeaderValue {
-		t.Errorf("Expected %s: %s, got: %v", DoNotTrackHeaderName, DoNotTrackHeaderValue, actual)
+	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
+	if actual != dnt.DoNotTrackHeaderValue {
+		t.Errorf("Expected %s: %s, got: %v", dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue, actual)
 	}
 }
 
@@ -192,17 +193,7 @@ func TestCountsOptionsPreflight(t *testing.T) {
 			status, http.StatusNoContent)
 	}
 
-	expectedAllowedHosts := "https://example.org"
-	actual := recorder.Header().Get("Access-Control-Allow-Origin")
-	if actual != expectedAllowedHosts {
-		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
-	}
-
-	expectedAllowedMethods := "GET"
-	actual = recorder.Header().Get("Access-Control-Allow-Methods")
-	if actual != expectedAllowedMethods {
-		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
-	}
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestCountsMissingParam(t *testing.T) {
@@ -310,17 +301,7 @@ func TestAllOptionsPreflight(t *testing.T) {
 			status, http.StatusNoContent)
 	}
 
-	expectedAllowedHosts := "https://example.org"
-	actual := recorder.Header().Get("Access-Control-Allow-Origin")
-	if actual != expectedAllowedHosts {
-		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
-	}
-
-	expectedAllowedMethods := "GET"
-	actual = recorder.Header().Get("Access-Control-Allow-Methods")
-	if actual != expectedAllowedMethods {
-		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
-	}
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestAllHost(t *testing.T) {
@@ -388,5 +369,19 @@ func TestAllPath(t *testing.T) {
 	if firstElement != expected {
 		t.Errorf("handler returned unexpected body: got '%v' want %v",
 			firstElement, expected)
+	}
+}
+
+func verifyCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
+	expectedAllowedHosts := "https://" + origin
+	actual := recorder.Header().Get(CorsAccessControlAllowOriginHeaderName)
+	if actual != expectedAllowedHosts {
+		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowOriginHeaderName, expectedAllowedHosts, actual)
+	}
+
+	expectedAllowedMethods := "GET, POST"
+	actual = recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
+	if actual != expectedAllowedMethods {
+		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
 	}
 }
