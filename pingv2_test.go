@@ -1,4 +1,4 @@
-package main
+package ping
 
 import (
 	"net/http"
@@ -18,7 +18,7 @@ func TestPingV2_EmptyReferrer(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -44,7 +44,7 @@ func TestPingV2_UnauthorizedHost(t *testing.T) {
 	request.Header.Set("Referer", "http://mehehe.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusUnauthorized {
@@ -71,19 +71,12 @@ func TestPingV2_RequestNotToTrack(t *testing.T) {
 	request.Header.Set(dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue)
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
+	if status := recorder.Code; status != http.StatusNoContent {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-
-	expected := `(function(){})();`
-
-	if recorder.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			recorder.Body.String(), expected)
+			status, http.StatusNoContent)
 	}
 
 	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
@@ -95,8 +88,6 @@ func TestPingV2_RequestNotToTrack(t *testing.T) {
 // BUG(jussi): Might crash because database check in database.go's init() will most
 // likely return true because `checkIfSchemaExists` query doesn't include DB
 func TestPingV2_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	var err error
 	db, err = database.InitializeForTest()
 	if err != nil {
@@ -114,7 +105,7 @@ func TestPingV2_Success(t *testing.T) {
 	request.Header.Set("User-Agent", "go test client")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusOK {
@@ -137,8 +128,6 @@ func TestPingV2_Success(t *testing.T) {
 }
 
 func TestSubmitV2_MissingHost(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=&path=/root"))
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +137,7 @@ func TestSubmitV2_MissingHost(t *testing.T) {
 	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -162,12 +151,10 @@ func TestSubmitV2_MissingHost(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestSubmitV2_MissingPath(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path="))
 	if err != nil {
 		t.Fatal(err)
@@ -177,7 +164,7 @@ func TestSubmitV2_MissingPath(t *testing.T) {
 	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -191,12 +178,10 @@ func TestSubmitV2_MissingPath(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestSubmitV2_InvalidHost(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader(`host=\\.\\%21...boom%21%21&path=/root`))
 	if err != nil {
 		t.Fatal(err)
@@ -206,7 +191,7 @@ func TestSubmitV2_InvalidHost(t *testing.T) {
 	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusInternalServerError {
@@ -222,8 +207,6 @@ func TestSubmitV2_InvalidHost(t *testing.T) {
 }
 
 func TestSubmitV2_UnauthorizedHost(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=unauthorized.org&path=/root"))
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +216,7 @@ func TestSubmitV2_UnauthorizedHost(t *testing.T) {
 	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusUnauthorized {
@@ -247,12 +230,10 @@ func TestSubmitV2_UnauthorizedHost(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestSubmitV2_MissingUserAgent(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path=/root"))
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +243,7 @@ func TestSubmitV2_MissingUserAgent(t *testing.T) {
 	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusBadRequest {
@@ -276,12 +257,10 @@ func TestSubmitV2_MissingUserAgent(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestSubmitV2_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	var err error
 	db, err = database.InitializeForTest()
 	if err != nil {
@@ -300,7 +279,7 @@ func TestSubmitV2_Success(t *testing.T) {
 	request.RemoteAddr = "100.0.0.0"
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusCreated {
@@ -314,7 +293,7 @@ func TestSubmitV2_Success(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org/")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 
 	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
 
@@ -340,8 +319,6 @@ func TestSubmitV2_Success(t *testing.T) {
 }
 
 func TestSubmitV2_Success_PreservesXForwardedForOverRemoteAddr(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	var err error
 	db, err = database.InitializeForTest()
 	if err != nil {
@@ -359,7 +336,7 @@ func TestSubmitV2_Success_PreservesXForwardedForOverRemoteAddr(t *testing.T) {
 	request.RemoteAddr = "127.0.0.1:12324"
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
 	if status := recorder.Code; status != http.StatusCreated {
@@ -373,7 +350,7 @@ func TestSubmitV2_Success_PreservesXForwardedForOverRemoteAddr(t *testing.T) {
 			expected, recorder.Body.String())
 	}
 
-	verifyCorsHeaders(t, recorder, "example.org/")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 
 	visit, err := database.Get(db, 1)
 	if err != nil {

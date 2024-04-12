@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/parkr/ping/dnt"
 )
 
 const returnedJavaScript = "(function(){})();"
@@ -16,11 +14,6 @@ func Write(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Content-Length", lengthOfJavaScript)
 	fmt.Fprintf(w, returnedJavaScript)
-}
-
-func DoNotTrack(w http.ResponseWriter) {
-	Write(w, http.StatusOK)
-	dnt.SetDoNotTrack(w)
 }
 
 func Error(w http.ResponseWriter, code int, err string) {
