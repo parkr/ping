@@ -1,31 +1,31 @@
 package analytics
 
 import (
-	"log"
-	"os"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/parkr/ping/database"
 )
 
-var db *sqlx.DB
-
-func init() {
-	var err error
-	db, err = database.Initialize()
+func initDB() (*sqlx.DB, error) {
+	db, err := database.InitializeForTest()
 	if err != nil {
-		log.Printf("Error connecting to db '%s'", os.Getenv("PING_DB"))
-		panic(err)
+		return db, err
 	}
-	db.MustExec(`
+	_, err = db.Exec(`
 		INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES
 		('127.0.0.1', 'example.org', '/root', 'go test client', datetime('now')),
 		('127.0.0.1', 'example.org', '/foo', 'go test client', datetime('now'));`)
+	return db, err
 }
 
 func TestVisitorsForPath(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	visitors, err := VisitorsForHostPath(db, "example.org", "/root")
 
 	if err != nil {
@@ -38,6 +38,12 @@ func TestVisitorsForPath(t *testing.T) {
 }
 
 func TestViewsForHostPath(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	views, err := ViewsForHostPath(db, "example.org", "/root")
 
 	if err != nil {
@@ -50,6 +56,12 @@ func TestViewsForHostPath(t *testing.T) {
 }
 
 func TestAllPaths(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	paths, err := AllPaths(db)
 
 	if err != nil {
@@ -74,6 +86,12 @@ func TestAllPaths(t *testing.T) {
 }
 
 func TestAllHosts(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	hosts, err := AllHosts(db)
 
 	if err != nil {
@@ -88,6 +106,12 @@ func TestAllHosts(t *testing.T) {
 }
 
 func TestListDistinctColumnHost(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	hosts, err := ListDistinctColumn(db, "host")
 
 	if err != nil {
@@ -106,6 +130,12 @@ func TestListDistinctColumnHost(t *testing.T) {
 }
 
 func TestListDistinctColumnPath(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	hosts, err := ListDistinctColumn(db, "path")
 
 	if err != nil {
@@ -120,6 +150,12 @@ func TestListDistinctColumnPath(t *testing.T) {
 }
 
 func TestListDistinctColumnError(t *testing.T) {
+	db, err := initDB()
+	if err != nil {
+		t.Fatalf("unable to initialize db: %v", err)
+	}
+	defer db.Close()
+
 	hosts, err := ListDistinctColumn(db, "mehehe")
 
 	if err == nil {

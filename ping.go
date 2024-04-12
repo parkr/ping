@@ -18,6 +18,8 @@ import (
 	"github.com/parkr/ping/jsv2"
 )
 
+const xForwardedForHeaderName = "X-Forwarded-For"
+
 var (
 	allowedHosts  map[string]bool
 	hostAllowlist = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
@@ -85,7 +87,7 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ip string
-	if res := r.Header.Get("X-Forwarded-For"); res != "" {
+	if res := r.Header.Get(xForwardedForHeaderName); res != "" {
 		log.Println("Fetching IP from proxy:", sanitizeUserInput(res))
 		ip = res
 	} else {
@@ -100,10 +102,10 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	visit := &database.Visit{
-		IP:        ip,
-		Host:      url.Host,
-		Path:      url.Path,
-		UserAgent: userAgent,
+		IP:        sanitizeUserInput(ip),
+		Host:      sanitizeUserInput(url.Host),
+		Path:      sanitizeUserInput(url.Path),
+		UserAgent: sanitizeUserInput(userAgent),
 		CreatedAt: time.Now().UTC().Format(database.SQLDateTimeFormat),
 	}
 	log.Println("Logging visit:", sanitizeUserInput(visit.String()))
@@ -173,7 +175,8 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Referer", referer.String())
 	req.Header.Set("User-Agent", r.Header.Get("User-Agent"))
-	req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+	req.Header.Set(xForwardedForHeaderName, r.RemoteAddr)
+	req.RemoteAddr = r.RemoteAddr
 
 	addCorsHeaders(w, r)
 

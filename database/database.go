@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -28,6 +27,16 @@ const (
 
 type TableCheck struct {
 	DoesExist int `db:"does_exist"`
+}
+
+// InitializeForTest creates an in-memory SQL database for tests only.
+func InitializeForTest() (*sqlx.DB, error) {
+	db, err := sqlx.Connect("sqlite3", "") // An empty string appears to create a one-off, in-memory database.
+	if err != nil {
+		return db, err
+	}
+	_, err = db.Exec(schema)
+	return db, err
 }
 
 func Initialize() (*sqlx.DB, error) {
@@ -73,8 +82,6 @@ func (v *Visit) String() string {
 }
 
 func (v *Visit) Save(db *sqlx.DB) error {
-	result, err := db.NamedExec(insertVisit, v)
-	lastInsertedId, _ := result.LastInsertId()
-	log.Println("inserted id", lastInsertedId)
+	_, err := db.NamedExec(insertVisit, v)
 	return err
 }
