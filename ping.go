@@ -78,20 +78,20 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	url, err := url.Parse(referrer)
 
 	if err != nil {
-		log.Println("invalid referrer:", referrer)
+		log.Println("invalid referrer:", sanitizeUserInput(referrer))
 		javascriptRespond(w, 500, "Couldn't parse referrer: "+err.Error())
 		return
 	}
 
 	if !allowedHost(url.Host) {
-		log.Println("unauthorized host:", url.Host)
+		log.Println("unauthorized host:", sanitizeUserInput(url.Host))
 		javascriptRespond(w, 403, "love the host, except noooope.")
 		return
 	}
 
 	var ip string
 	if res := r.Header.Get("X-Forwarded-For"); res != "" {
-		log.Println("Fetching IP from proxy:", res)
+		log.Println("Fetching IP from proxy:", sanitizeUserInput(res))
 		ip = res
 	} else {
 		ip = r.RemoteAddr
@@ -111,7 +111,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		UserAgent: userAgent,
 		CreatedAt: time.Now().UTC().Format(database.SQLDateTimeFormat),
 	}
-	log.Println("Logging visit:", visit.String())
+	log.Println("Logging visit:", sanitizeUserInput(visit.String()))
 
 	err = visit.Save(db)
 

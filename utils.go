@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 func writeJsonResponse(w http.ResponseWriter, input interface{}) {
@@ -14,4 +15,10 @@ func writeJsonResponse(w http.ResponseWriter, input interface{}) {
 	} else {
 		w.Write(data)
 	}
+}
+
+func sanitizeUserInput(input string) string {
+	escapedInput := strings.ReplaceAll(input, "\n", "")
+	escapedInput = strings.ReplaceAll(escapedInput, "\r", "")
+	return escapedInput
 }
