@@ -18,7 +18,7 @@ func TestAddCorsHeaders_OriginRequestHeader_Success(t *testing.T) {
 
 	addCorsHeaders(recorder, request)
 
-	expectedAllowedMethods := "GET"
+	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
 	if actual != expectedAllowedMethods {
 		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
@@ -43,7 +43,7 @@ func TestAddCorsHeaders_RefererRequestHeader_Success(t *testing.T) {
 
 	addCorsHeaders(recorder, request)
 
-	expectedAllowedMethods := "GET"
+	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
 	if actual != expectedAllowedMethods {
 		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
@@ -68,7 +68,7 @@ func TestAddCorsHeaders_NeitherRequestHeader_Success(t *testing.T) {
 
 	addCorsHeaders(recorder, request)
 
-	expectedAllowedMethods := "GET"
+	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
 	if actual != expectedAllowedMethods {
 		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
@@ -93,7 +93,7 @@ func TestAddCorsHeaders_UnparseableRequestHeader_Success(t *testing.T) {
 
 	addCorsHeaders(recorder, request)
 
-	expectedAllowedMethods := "GET"
+	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
 	if actual != expectedAllowedMethods {
 		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)

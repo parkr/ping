@@ -160,6 +160,7 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	path := r.FormValue("path")
 	if host == "" || path == "" {
 		jsv1.Error(w, http.StatusBadRequest, "missing param")
+		addCorsHeaders(w, r)
 		return
 	}
 	referer := url.URL{Host: host, Path: path}
@@ -167,11 +168,14 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	req, err := http.NewRequest(http.MethodGet, "/ping.js", nil)
 	if err != nil {
 		jsv1.Error(w, http.StatusInternalServerError, "unable to rewrite")
+		addCorsHeaders(w, r)
 		return
 	}
 	req.Header.Set("Referer", referer.String())
 	req.Header.Set("User-Agent", r.Header.Get("User-Agent"))
 	req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+
+	addCorsHeaders(w, r)
 
 	log.Printf("forwarding v2 to v1")
 
@@ -245,8 +249,8 @@ func buildHandler() *http.ServeMux {
 	mux.HandleFunc("/_health", health)
 	mux.HandleFunc("/ping", ping)
 	mux.HandleFunc("/ping.js", ping)
-	mux.HandleFunc("/submit", submitv2)
-	mux.HandleFunc("/submit.js", submitv2)
+	mux.Handle("/submit", &corsHandler{submitv2})
+	mux.Handle("/submit.js", &corsHandler{submitv2})
 	mux.Handle("/counts", &corsHandler{counts})
 	mux.Handle("/all", &corsHandler{all})
 	return mux

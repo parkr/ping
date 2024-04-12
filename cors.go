@@ -26,7 +26,7 @@ func (c *corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func addCorsHeaders(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(CorsAccessControlAllowMethodsHeaderName, "GET")
+	w.Header().Set(CorsAccessControlAllowMethodsHeaderName, "GET, POST")
 	if allowCORSOrigin(r.Header.Get("Origin")) {
 		w.Header().Set(CorsAccessControlAllowOriginHeaderName, r.Header.Get("Origin"))
 	} else if allowCORSOrigin(r.Referer()) {

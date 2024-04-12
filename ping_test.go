@@ -193,17 +193,7 @@ func TestCountsOptionsPreflight(t *testing.T) {
 			status, http.StatusNoContent)
 	}
 
-	expectedAllowedHosts := "https://example.org"
-	actual := recorder.Header().Get("Access-Control-Allow-Origin")
-	if actual != expectedAllowedHosts {
-		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
-	}
-
-	expectedAllowedMethods := "GET"
-	actual = recorder.Header().Get("Access-Control-Allow-Methods")
-	if actual != expectedAllowedMethods {
-		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
-	}
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestCountsMissingParam(t *testing.T) {
@@ -311,17 +301,7 @@ func TestAllOptionsPreflight(t *testing.T) {
 			status, http.StatusNoContent)
 	}
 
-	expectedAllowedHosts := "https://example.org"
-	actual := recorder.Header().Get("Access-Control-Allow-Origin")
-	if actual != expectedAllowedHosts {
-		t.Errorf("expected Access-Control-Allow-Origin: %v, got: %v", expectedAllowedHosts, actual)
-	}
-
-	expectedAllowedMethods := "GET"
-	actual = recorder.Header().Get("Access-Control-Allow-Methods")
-	if actual != expectedAllowedMethods {
-		t.Errorf("expected Access-Control-Allow-Methods: %v, got: %v", expectedAllowedMethods, actual)
-	}
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestAllHost(t *testing.T) {
@@ -389,5 +369,19 @@ func TestAllPath(t *testing.T) {
 	if firstElement != expected {
 		t.Errorf("handler returned unexpected body: got '%v' want %v",
 			firstElement, expected)
+	}
+}
+
+func verifyCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
+	expectedAllowedHosts := "https://" + origin
+	actual := recorder.Header().Get(CorsAccessControlAllowOriginHeaderName)
+	if actual != expectedAllowedHosts {
+		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowOriginHeaderName, expectedAllowedHosts, actual)
+	}
+
+	expectedAllowedMethods := "GET, POST"
+	actual = recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
+	if actual != expectedAllowedMethods {
+		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
 	}
 }

@@ -147,6 +147,7 @@ func TestSubmitV2_MissingHost(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -162,6 +163,8 @@ func TestSubmitV2_MissingHost(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_MissingPath(t *testing.T) {
@@ -173,6 +176,7 @@ func TestSubmitV2_MissingPath(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -188,6 +192,8 @@ func TestSubmitV2_MissingPath(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_InvalidHost(t *testing.T) {
@@ -199,6 +205,7 @@ func TestSubmitV2_InvalidHost(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -214,6 +221,8 @@ func TestSubmitV2_InvalidHost(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_UnauthorizedHost(t *testing.T) {
@@ -225,6 +234,7 @@ func TestSubmitV2_UnauthorizedHost(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -240,6 +250,8 @@ func TestSubmitV2_UnauthorizedHost(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_MissingUserAgent(t *testing.T) {
@@ -251,6 +263,7 @@ func TestSubmitV2_MissingUserAgent(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "") // missing
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -266,6 +279,8 @@ func TestSubmitV2_MissingUserAgent(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 }
 
 func TestSubmitV2_Success(t *testing.T) {
@@ -287,6 +302,7 @@ func TestSubmitV2_Success(t *testing.T) {
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org")
 
 	recorder := httptest.NewRecorder()
 	handler := buildHandler()
@@ -302,6 +318,8 @@ func TestSubmitV2_Success(t *testing.T) {
 		t.Errorf("submitv2 body is not expected string %q, got: %v",
 			expected, recorder.Body.String())
 	}
+
+	verifyCorsHeaders(t, recorder, "example.org")
 
 	visitCountEnd, _ := analytics.ViewsForHostPath(db, "example.org", "/TestSubmitV2_Success")
 
