@@ -20,7 +20,7 @@ const (
     	path text NOT NULL,
 		created_at datetime NOT NULL
 	);`
-	checkIfSchemaExists = `SELECT COUNT(*) FROM visits LIMIT 1;`
+	checkIfSchemaExists = `SELECT COUNT(*) as does_exist FROM sqlite_master WHERE type='table' AND name='visits';`
 	insertVisit         = `INSERT INTO visits (ip, host, path, user_agent, created_at) VALUES (:ip, :host, :path, :user_agent, :created_at)`
 	selectVisit         = `SELECT ip, host, path, user_agent, created_at FROM visits WHERE id = ?`
 )
