@@ -175,8 +175,12 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Referer", referer.String())
 	req.Header.Set("User-Agent", r.Header.Get("User-Agent"))
-	req.Header.Set(xForwardedForHeaderName, r.RemoteAddr)
-	req.RemoteAddr = r.RemoteAddr
+
+	remoteAddr := r.Header.Get(xForwardedForHeaderName)
+	if remoteAddr == "" {
+		remoteAddr = r.RemoteAddr
+	}
+	req.Header.Set(xForwardedForHeaderName, remoteAddr)
 
 	addCorsHeaders(w, r)
 
