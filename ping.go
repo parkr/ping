@@ -1,17 +1,17 @@
-package main
+package ping
 
 import (
-	"flag"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/parkr/ping/analytics"
+	"github.com/parkr/ping/cors"
 	"github.com/parkr/ping/database"
 	"github.com/parkr/ping/dnt"
 	"github.com/parkr/ping/jsv1"
@@ -20,28 +20,26 @@ import (
 
 const xForwardedForHeaderName = "X-Forwarded-For"
 
-var (
-	allowedHosts  map[string]bool
-	hostAllowlist = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
-)
-
 var db *sqlx.DB
 
-func allowedHost(host string) bool {
-	if hostAllowlist == nil || *hostAllowlist == "" {
-		return true
+func Initialize(connection string) error {
+	var err error
+	db, err = database.Initialize(connection)
+	return err
+}
+
+func parseReferer(referer string) (*url.URL, error) {
+	if referer == "" {
+		return nil, errors.New("referer is empty")
 	}
 
-	if allowedHosts == nil || len(allowedHosts) == 0 {
-		allowedHostsList := strings.Split(*hostAllowlist, ",")
-		allowedHosts = make(map[string]bool, len(allowedHostsList))
-		for _, allowedHost := range allowedHostsList {
-			allowedHosts[allowedHost] = true
-		}
-	}
+	return url.Parse(referer)
+}
 
-	_, ok := allowedHosts[host]
-	return ok
+func jsonError(w http.ResponseWriter, statusCode int, message string) {
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 // ping routes to pingv1 or pingv2 depending on the version code in the form.
@@ -59,30 +57,10 @@ func ping(w http.ResponseWriter, r *http.Request) {
 // When a request comes in, the referer and remote IP (or X-Forwarded-For)
 // are used to write the ping entry.
 func pingv1(w http.ResponseWriter, r *http.Request) {
-	if dnt.RequestsDoNotTrack(r) {
-		log.Println("dnt requested")
-		jsv1.DoNotTrack(w)
-		return
-	}
-
-	referrer := r.Referer()
-	if referrer == "" {
-		log.Println("empty referrer")
-		jsv1.Error(w, http.StatusBadRequest, "empty referrer")
-		return
-	}
-
-	url, err := url.Parse(referrer)
-
+	parsedReferer, err := parseReferer(r.Referer())
 	if err != nil {
-		log.Println("invalid referrer:", sanitizeUserInput(referrer))
-		jsv1.Error(w, http.StatusInternalServerError, "Couldn't parse referrer: "+err.Error())
-		return
-	}
-
-	if !allowedHost(url.Host) {
-		log.Println("unauthorized host:", sanitizeUserInput(url.Host))
-		jsv1.Error(w, http.StatusUnauthorized, "unauthorized host")
+		log.Printf("referer invalid (%q): %v", sanitizeUserInput(r.Referer()), err)
+		jsv1.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -103,8 +81,8 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 
 	visit := &database.Visit{
 		IP:        sanitizeUserInput(ip),
-		Host:      sanitizeUserInput(url.Host),
-		Path:      sanitizeUserInput(url.Path),
+		Host:      sanitizeUserInput(parsedReferer.Host),
+		Path:      sanitizeUserInput(parsedReferer.Path),
 		UserAgent: sanitizeUserInput(userAgent),
 		CreatedAt: time.Now().UTC().Format(database.SQLDateTimeFormat),
 	}
@@ -124,45 +102,21 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 // pingv2 implements the js-based logging.
 // When a request comes in, it returns JS that will call /submit.js to capture
 // the full path of the page visited.
-func pingv2(w http.ResponseWriter, r *http.Request) {
-	if dnt.RequestsDoNotTrack(r) {
-		log.Println("dnt requested")
-		jsv1.DoNotTrack(w)
-		return
-	}
-
-	referrer := r.Referer()
-	if referrer == "" {
-		log.Println("empty referrer")
-		jsv1.Error(w, http.StatusBadRequest, "empty referrer")
-		return
-	}
-
-	url, err := url.Parse(referrer)
-
-	if err != nil {
-		log.Println("invalid referrer:", sanitizeUserInput(referrer))
-		jsv1.Error(w, http.StatusInternalServerError, "Couldn't parse referrer: "+err.Error())
-		return
-	}
-
-	if !allowedHost(url.Host) {
-		log.Println("unauthorized host:", sanitizeUserInput(url.Host))
-		jsv1.Error(w, http.StatusUnauthorized, "unauthorized host")
-		return
-	}
-
+func pingv2(w http.ResponseWriter, _ *http.Request) {
 	jsv2.Write(w, http.StatusOK)
+}
+
+type submitv2Handler struct {
+	nextHandler http.Handler
 }
 
 // submitv2 takes an XHR request with the host & path in the form and rewrites
 // as a pingv1 request using the referer.
-func submitv2(w http.ResponseWriter, r *http.Request) {
+func (s submitv2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host := r.FormValue("host")
 	path := r.FormValue("path")
 	if host == "" || path == "" {
 		jsv1.Error(w, http.StatusBadRequest, "missing param")
-		addCorsHeaders(w, r)
 		return
 	}
 	referer := url.URL{Host: host, Path: path}
@@ -170,7 +124,6 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	req, err := http.NewRequest(http.MethodGet, "/ping.js", nil)
 	if err != nil {
 		jsv1.Error(w, http.StatusInternalServerError, "unable to rewrite")
-		addCorsHeaders(w, r)
 		return
 	}
 	req.Header.Set("Referer", referer.String())
@@ -182,11 +135,9 @@ func submitv2(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set(xForwardedForHeaderName, remoteAddr)
 
-	addCorsHeaders(w, r)
-
 	log.Printf("forwarding v2 to v1")
 
-	pingv1(w, req)
+	s.nextHandler.ServeHTTP(w, req)
 }
 
 func counts(w http.ResponseWriter, r *http.Request) {
@@ -196,21 +147,20 @@ func counts(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var views, visitors int
 	if host == "" || path == "" {
-		http.Error(w, "Missing param", 400)
+		jsonError(w, http.StatusBadRequest, "missing param")
 	} else {
 		views, err = analytics.ViewsForHostPath(db, host, path)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		visitors, err = analytics.VisitorsForHostPath(db, host, path)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		addCorsHeaders(w, r)
 		writeJsonResponse(w, map[string]int{
 			"views":    views,
 			"visitors": visitors,
@@ -225,16 +175,23 @@ func all(w http.ResponseWriter, r *http.Request) {
 		entries, err := analytics.ListDistinctColumn(db, thing)
 
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		addCorsHeaders(w, r)
 		writeJsonResponse(w, map[string][]string{"entries": entries})
 	} else {
-		http.Error(w, "Missing param", 400)
+		jsonError(w, http.StatusBadRequest, "missing param")
 		return
 	}
+}
+
+type statsHandler struct {
+	pingBaseURL string
+}
+
+func (s statsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	jsv1.WriteStats(w, s.pingBaseURL)
 }
 
 func health(w http.ResponseWriter, r *http.Request) {
@@ -251,36 +208,22 @@ func health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "healthy")
 }
 
-func buildHandler() *http.ServeMux {
+func NewHandler(allowedHosts []string, pingBaseURL string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_health", health)
-	mux.HandleFunc("/ping", ping)
-	mux.HandleFunc("/ping.js", ping)
-	mux.Handle("/submit", &corsHandler{submitv2})
-	mux.Handle("/submit.js", &corsHandler{submitv2})
-	mux.Handle("/counts", &corsHandler{counts})
-	mux.Handle("/all", &corsHandler{all})
+	pingHandler := dnt.NewMiddleware(
+		NewHostAuthMiddleware(allowedHosts,
+			http.HandlerFunc(ping)))
+	mux.Handle("/ping", pingHandler)
+	mux.Handle("/ping.js", pingHandler)
+	submitHandler := cors.NewMiddleware(allowedHosts,
+		dnt.NewMiddleware(
+			NewHostAuthMiddleware(allowedHosts,
+				submitv2Handler{pingHandler})))
+	mux.Handle("/submit", submitHandler)
+	mux.Handle("/submit.js", submitHandler)
+	mux.Handle("/counts", cors.NewMiddleware(allowedHosts, http.HandlerFunc(counts)))
+	mux.Handle("/all", cors.NewMiddleware(allowedHosts, http.HandlerFunc(all)))
+	mux.Handle("/stats.js", cors.NewMiddleware(allowedHosts, statsHandler{pingBaseURL}))
 	return mux
-}
-
-func main() {
-	defaultPort := os.Getenv("PORT")
-	if defaultPort == "" {
-		defaultPort = "8000"
-	}
-
-	var binding string
-	flag.StringVar(&binding, "http", ":"+defaultPort, "The IP/port to bind to.")
-	flag.Parse()
-
-	var err error
-	db, err = database.Initialize()
-	if err != nil {
-		log.Fatalf("unable to initialize db: %+v", err)
-	}
-
-	http.Handle("/", buildHandler())
-
-	log.Println("Listening on", binding, "...")
-	log.Fatal(http.ListenAndServe(binding, nil))
 }

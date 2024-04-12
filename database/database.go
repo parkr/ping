@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -39,8 +38,8 @@ func InitializeForTest() (*sqlx.DB, error) {
 	return db, err
 }
 
-func Initialize() (*sqlx.DB, error) {
-	db, err := sqlx.Connect("sqlite3", os.Getenv("PING_DB"))
+func Initialize(connection string) (*sqlx.DB, error) {
+	db, err := sqlx.Connect("sqlite3", connection)
 	if err != nil {
 		return nil, err
 	}

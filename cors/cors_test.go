@@ -1,4 +1,4 @@
-package main
+package cors
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestAddCorsHeaders_OriginRequestHeader_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
+	middleware := NewMiddleware([]string{"example.org"}, nil)
 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest(http.MethodOptions, "/foo", nil)
@@ -16,7 +16,7 @@ func TestAddCorsHeaders_OriginRequestHeader_Success(t *testing.T) {
 	}
 	request.Header.Add("Origin", "https://example.org")
 
-	addCorsHeaders(recorder, request)
+	middleware.ServeHTTP(recorder, request)
 
 	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
@@ -32,7 +32,7 @@ func TestAddCorsHeaders_OriginRequestHeader_Success(t *testing.T) {
 }
 
 func TestAddCorsHeaders_RefererRequestHeader_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
+	middleware := NewMiddleware([]string{"example.org"}, nil)
 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest(http.MethodOptions, "/foo", nil)
@@ -41,7 +41,7 @@ func TestAddCorsHeaders_RefererRequestHeader_Success(t *testing.T) {
 	}
 	request.Header.Add("Referer", "https://example.org")
 
-	addCorsHeaders(recorder, request)
+	middleware.ServeHTTP(recorder, request)
 
 	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
@@ -57,7 +57,7 @@ func TestAddCorsHeaders_RefererRequestHeader_Success(t *testing.T) {
 }
 
 func TestAddCorsHeaders_NeitherRequestHeader_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
+	middleware := NewMiddleware([]string{"example.org"}, nil)
 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest(http.MethodOptions, "/foo", nil)
@@ -66,7 +66,7 @@ func TestAddCorsHeaders_NeitherRequestHeader_Success(t *testing.T) {
 	}
 	request.Header.Add("FooBar", "https://example.org")
 
-	addCorsHeaders(recorder, request)
+	middleware.ServeHTTP(recorder, request)
 
 	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
@@ -82,7 +82,7 @@ func TestAddCorsHeaders_NeitherRequestHeader_Success(t *testing.T) {
 }
 
 func TestAddCorsHeaders_UnparseableRequestHeader_Success(t *testing.T) {
-	*hostAllowlist = "example.org"
+	middleware := NewMiddleware([]string{"example.org"}, nil)
 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest(http.MethodOptions, "/foo", nil)
@@ -91,7 +91,7 @@ func TestAddCorsHeaders_UnparseableRequestHeader_Success(t *testing.T) {
 	}
 	request.Header.Add("Origin", "foo-bar-bang:/\bingboom")
 
-	addCorsHeaders(recorder, request)
+	middleware.ServeHTTP(recorder, request)
 
 	expectedAllowedMethods := "GET, POST"
 	actual := recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)

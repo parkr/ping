@@ -7,14 +7,15 @@ import (
 	"github.com/parkr/ping/database"
 )
 
-func VerifySchema() error {
-	_, err := database.Initialize()
+func VerifySchema(connection string) error {
+	_, err := database.Initialize(connection)
 	return err
 }
 
 func main() {
-	if err := VerifySchema(); err != nil {
+	connection := os.Getenv("PING_DB")
+	if err := VerifySchema(connection); err != nil {
 		log.Fatalf("error setting up database: %+v", err)
 	}
-	log.Printf("database setup at %s", os.Getenv("PING_DB"))
+	log.Printf("database setup at %s", connection)
 }

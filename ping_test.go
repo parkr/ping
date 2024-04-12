@@ -1,4 +1,4 @@
-package main
+package ping
 
 import (
 	"encoding/json"
@@ -8,19 +8,10 @@ import (
 	"testing"
 
 	"github.com/parkr/ping/analytics"
+	"github.com/parkr/ping/cors"
 	"github.com/parkr/ping/database"
 	"github.com/parkr/ping/dnt"
 )
-
-// Tests white listing.
-// Hosts can be allowlisted so other sites can't mess with page views.
-func TestAllowedHost(t *testing.T) {
-	*hostAllowlist = "example.org"
-
-	if allowedHost("badexample.org") {
-		t.Error("Host badexample.org shouldn't be allowed to access")
-	}
-}
 
 func TestPingEmptyReferrer(t *testing.T) {
 	request, err := http.NewRequest("GET", "/ping", nil)
@@ -29,13 +20,10 @@ func TestPingEmptyReferrer(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
+	assertStatusCode(t, recorder, http.StatusBadRequest)
 
 	expected := `(function(){console.error("empty referrer")})();`
 
@@ -43,7 +31,6 @@ func TestPingEmptyReferrer(t *testing.T) {
 		t.Errorf("handler returned unexpected body: got %v want %v",
 			recorder.Body.String(), expected)
 	}
-
 }
 
 func TestPingUnauthorizedHost(t *testing.T) {
@@ -55,13 +42,10 @@ func TestPingUnauthorizedHost(t *testing.T) {
 	request.Header.Set("Referer", "http://mehehe.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusUnauthorized {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusForbidden)
-	}
+	assertStatusCode(t, recorder, http.StatusUnauthorized)
 
 	expected := `(function(){console.error("unauthorized host")})();`
 
@@ -80,13 +64,10 @@ func TestPingEmptyUserAgent(t *testing.T) {
 	request.Header.Set("Referer", "http://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
+	assertStatusCode(t, recorder, http.StatusBadRequest)
 
 	expected := `(function(){console.error("empty user-agent")})();`
 
@@ -107,20 +88,10 @@ func TestPingRequestNotToTrack(t *testing.T) {
 	request.Header.Set(dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue)
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
-
-	expected := `(function(){})();`
-
-	if recorder.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			recorder.Body.String(), expected)
-	}
+	assertStatusCode(t, recorder, http.StatusNoContent)
 
 	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
 	if actual != dnt.DoNotTrackHeaderValue {
@@ -131,8 +102,6 @@ func TestPingRequestNotToTrack(t *testing.T) {
 // BUG(jussi): Might crash because database check in database.go's init() will most
 // likely return true because `checkIfSchemaExists` query doesn't include DB
 func TestPingSuccess(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	var err error
 	db, err = database.InitializeForTest()
 	if err != nil {
@@ -150,13 +119,10 @@ func TestPingSuccess(t *testing.T) {
 	request.Header.Set("User-Agent", "go test client")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusCreated)
-	}
+	assertStatusCode(t, recorder, http.StatusCreated)
 
 	expected := `(function(){})();`
 
@@ -174,8 +140,6 @@ func TestPingSuccess(t *testing.T) {
 }
 
 func TestCountsOptionsPreflight(t *testing.T) {
-	*hostAllowlist = "example.org"
-
 	request, err := http.NewRequest(http.MethodOptions, "/counts", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -183,15 +147,11 @@ func TestCountsOptionsPreflight(t *testing.T) {
 	request.Header.Add("Origin", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusNoContent {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusNoContent)
-	}
-
-	verifyCorsHeaders(t, recorder, "example.org")
+	assertStatusCode(t, recorder, http.StatusNoContent)
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestCountsMissingParam(t *testing.T) {
@@ -201,15 +161,12 @@ func TestCountsMissingParam(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
+	assertStatusCode(t, recorder, http.StatusBadRequest)
 
-	expected := "Missing param\n"
+	expected := `{"error":"missing param"}` + "\n"
 
 	if recorder.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got '%v' want %v",
@@ -225,15 +182,12 @@ func TestCountsMissingHostParam(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusBadRequest {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusBadRequest)
-	}
+	assertStatusCode(t, recorder, http.StatusBadRequest)
 
-	expected := "Missing param\n"
+	expected := `{"error":"missing param"}` + "\n"
 
 	if recorder.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got '%v' want %v",
@@ -250,13 +204,10 @@ func TestCountsValid(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assertStatusCode(t, recorder, http.StatusOK)
 
 	var body map[string]int
 	json.NewDecoder(recorder.Body).Decode(&body)
@@ -291,15 +242,12 @@ func TestAllOptionsPreflight(t *testing.T) {
 	request.Header.Add("Origin", "https://example.org")
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusNoContent {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusNoContent)
-	}
+	assertStatusCode(t, recorder, http.StatusNoContent)
 
-	verifyCorsHeaders(t, recorder, "example.org")
+	verifyCorsHeaders(t, recorder, "https://example.org")
 }
 
 func TestAllHost(t *testing.T) {
@@ -311,13 +259,10 @@ func TestAllHost(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assertStatusCode(t, recorder, http.StatusOK)
 
 	var body map[string][]string
 	json.NewDecoder(recorder.Body).Decode(&body)
@@ -345,13 +290,10 @@ func TestAllPath(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	handler := buildHandler()
+	handler := NewHandler([]string{"example.org"}, "")
 	handler.ServeHTTP(recorder, request)
 
-	if status := recorder.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+	assertStatusCode(t, recorder, http.StatusOK)
 
 	var body map[string][]string
 	json.NewDecoder(recorder.Body).Decode(&body)
@@ -370,16 +312,87 @@ func TestAllPath(t *testing.T) {
 	}
 }
 
+func TestStats_Success(t *testing.T) {
+	pingBaseURL := "http://ping.mywebsite.com"
+
+	request, err := http.NewRequest("GET", "/stats.js", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Referer", pingBaseURL+"/foobar")
+
+	recorder := httptest.NewRecorder()
+	handler := NewHandler([]string{"ping.mywebsite.com"}, pingBaseURL)
+	handler.ServeHTTP(recorder, request)
+
+	assertStatusCode(t, recorder, http.StatusOK)
+
+	verifyCorsHeaders(t, recorder, pingBaseURL)
+
+	allExpectedBodyContents := []string{
+		"fetchPingStats",
+		"document.addEventListener",
+		"writePingStatsToHTML",
+		"http://ping.mywebsite.com/counts",
+	}
+	for _, expectedBodyContents := range allExpectedBodyContents {
+		if !strings.Contains(recorder.Body.String(), expectedBodyContents) {
+			t.Errorf("handler returned body which does not contain %q: %s",
+				expectedBodyContents, recorder.Body.String())
+		}
+	}
+}
+
+func TestHealth_NoDB(t *testing.T) {
+	db = nil
+
+	request, err := http.NewRequest("GET", "/_health", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := NewHandler([]string{}, "")
+	handler.ServeHTTP(recorder, request)
+
+	assertStatusCode(t, recorder, http.StatusInternalServerError)
+}
+
+func TestHealth_DB(t *testing.T) {
+	var err error
+	db, err = database.InitializeForTest()
+	if err != nil {
+		t.Errorf("unable to initialize database: %v", err)
+	}
+
+	request, err := http.NewRequest("GET", "/_health", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler := NewHandler([]string{}, "")
+	handler.ServeHTTP(recorder, request)
+
+	assertStatusCode(t, recorder, http.StatusOK)
+}
+
+func assertStatusCode(t *testing.T, recorder *httptest.ResponseRecorder, expectedCode int) {
+	if recorder.Code != expectedCode {
+		t.Errorf("handler expected status code %d, got %v",
+			expectedCode, recorder.Code)
+	}
+}
+
 func verifyCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
-	expectedAllowedHosts := "https://" + origin
-	actual := recorder.Header().Get(CorsAccessControlAllowOriginHeaderName)
-	if actual != expectedAllowedHosts {
-		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowOriginHeaderName, expectedAllowedHosts, actual)
+	actual := recorder.Header().Get(cors.CorsAccessControlAllowOriginHeaderName)
+	if actual != origin {
+		t.Errorf("expected %s: %v, got: %v", cors.CorsAccessControlAllowOriginHeaderName, origin, actual)
 	}
 
 	expectedAllowedMethods := "GET, POST"
-	actual = recorder.Header().Get(CorsAccessControlAllowMethodsHeaderName)
+	actual = recorder.Header().Get(cors.CorsAccessControlAllowMethodsHeaderName)
 	if actual != expectedAllowedMethods {
-		t.Errorf("expected %s: %v, got: %v", CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
+		t.Errorf("expected %s: %v, got: %v", cors.CorsAccessControlAllowMethodsHeaderName, expectedAllowedMethods, actual)
 	}
 }
