@@ -1,6 +1,7 @@
 package ping
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -33,6 +34,12 @@ func parseReferer(referer string) (*url.URL, error) {
 	}
 
 	return url.Parse(referer)
+}
+
+func jsonError(w http.ResponseWriter, statusCode int, message string) {
+	w.WriteHeader(statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 // ping routes to pingv1 or pingv2 depending on the version code in the form.
@@ -141,17 +148,17 @@ func counts(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var views, visitors int
 	if host == "" || path == "" {
-		http.Error(w, "Missing param", 400)
+		jsonError(w, http.StatusBadRequest, "missing param")
 	} else {
 		views, err = analytics.ViewsForHostPath(db, host, path)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		visitors, err = analytics.VisitorsForHostPath(db, host, path)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -169,13 +176,13 @@ func all(w http.ResponseWriter, r *http.Request) {
 		entries, err := analytics.ListDistinctColumn(db, thing)
 
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			jsonError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		writeJsonResponse(w, map[string][]string{"entries": entries})
 	} else {
-		http.Error(w, "Missing param", 400)
+		jsonError(w, http.StatusBadRequest, "missing param")
 		return
 	}
 }
