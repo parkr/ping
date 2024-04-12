@@ -89,7 +89,7 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 	var ip string
 	if res := r.Header.Get(xForwardedForHeaderName); res != "" {
 		log.Println("Fetching IP from proxy:", sanitizeUserInput(res))
-		ip = sanitizeUserInput(res)
+		ip = res
 	} else {
 		ip = r.RemoteAddr
 	}
@@ -102,10 +102,10 @@ func pingv1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	visit := &database.Visit{
-		IP:        ip,
-		Host:      url.Host,
-		Path:      url.Path,
-		UserAgent: userAgent,
+		IP:        sanitizeUserInput(ip),
+		Host:      sanitizeUserInput(url.Host),
+		Path:      sanitizeUserInput(url.Path),
+		UserAgent: sanitizeUserInput(userAgent),
 		CreatedAt: time.Now().UTC().Format(database.SQLDateTimeFormat),
 	}
 	log.Println("Logging visit:", sanitizeUserInput(visit.String()))
