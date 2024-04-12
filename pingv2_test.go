@@ -338,3 +338,50 @@ func TestSubmitV2_Success(t *testing.T) {
 		t.Errorf("expected visit ip %q, got: %v", expectedIP, visit.IP)
 	}
 }
+
+func TestSubmitV2_Success_PreservesXForwardedForOverRemoteAddr(t *testing.T) {
+	*hostAllowlist = "example.org"
+
+	var err error
+	db, err = database.InitializeForTest()
+	if err != nil {
+		t.Fatalf("unexpected error initializing database: %+v", err)
+	}
+
+	request, err := http.NewRequest("POST", "/submit.js", strings.NewReader("host=example.org&path=/TestSubmitV2_Success"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set("Referer", "https://example.org/")
+	request.Header.Set(xForwardedForHeaderName, "100.0.12.0")
+	request.RemoteAddr = "127.0.0.1:12324"
+
+	recorder := httptest.NewRecorder()
+	handler := buildHandler()
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusCreated)
+	}
+
+	expected := "(function(){})();"
+	if recorder.Body.String() != expected {
+		t.Errorf("submitv2 body is not expected string %q, got: %v",
+			expected, recorder.Body.String())
+	}
+
+	verifyCorsHeaders(t, recorder, "example.org/")
+
+	visit, err := database.Get(db, 1)
+	if err != nil {
+		t.Errorf("expected no error getting visit from db, got: %v", err)
+	}
+
+	expectedIP := "100.0.12.0"
+	if visit.IP != expectedIP {
+		t.Errorf("expected visit ip %q, got: %v", expectedIP, visit.IP)
+	}
+}
