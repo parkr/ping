@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	allowedHosts  []string
+	allowedHosts  map[string]bool
 	hostAllowlist = flag.String("hosts", "", "The hosts allowed to use this service. Comma-separated.")
 )
 
@@ -49,16 +49,16 @@ func allowedHost(host string) bool {
 		return true
 	}
 
-	if len(allowedHosts) == 0 {
-		allowedHosts = strings.Split(*hostAllowlist, ",")
-	}
-
-	for _, allowed := range allowedHosts {
-		if allowed == host {
-			return true
+	if allowedHosts == nil || len(allowedHosts) == 0 {
+		allowedHostsList := strings.Split(*hostAllowlist, ",")
+		allowedHosts = make(map[string]bool, len(allowedHostsList))
+		for _, allowedHost := range allowedHostsList {
+			allowedHosts[allowedHost] = true
 		}
 	}
-	return false
+
+	_, ok := allowedHosts[host]
+	return ok
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {

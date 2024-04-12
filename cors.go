@@ -6,6 +6,11 @@ import (
 	"net/url"
 )
 
+const (
+	CorsAccessControlAllowMethodsHeaderName = "Access-Control-Allow-Methods"
+	CorsAccessControlAllowOriginHeaderName  = "Access-Control-Allow-Origin"
+)
+
 type corsHandler struct {
 	next http.HandlerFunc
 }
@@ -21,20 +26,25 @@ func (c *corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func addCorsHeaders(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	origin := r.Header.Get("Origin")
-	if origin != "" {
-		parsedOrigin, err := url.Parse(origin)
-		if err != nil {
-			log.Printf("unable to parse origin %q: %v", origin, err)
-		} else {
-			originHostname := parsedOrigin.Hostname()
-			for _, allowedHost := range allowedHosts {
-				if allowedHost == originHostname {
-					w.Header().Set("Access-Control-Allow-Origin", "https://"+allowedHost)
-					break
-				}
-			}
-		}
+	w.Header().Set(CorsAccessControlAllowMethodsHeaderName, "GET")
+	if allowCORSOrigin(r.Header.Get("Origin")) {
+		w.Header().Set(CorsAccessControlAllowOriginHeaderName, r.Header.Get("Origin"))
+	} else if allowCORSOrigin(r.Referer()) {
+		w.Header().Set(CorsAccessControlAllowOriginHeaderName, r.Referer())
 	}
+}
+
+func allowCORSOrigin(origin string) bool {
+	if origin == "" {
+		return false
+	}
+
+	parsedOrigin, err := url.Parse(origin)
+	if err != nil {
+		log.Printf("cors: unable to parse origin %q: %v", origin, err)
+		return false
+	}
+
+	originHostname := parsedOrigin.Hostname()
+	return allowedHost(originHostname)
 }
