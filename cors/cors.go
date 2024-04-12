@@ -31,12 +31,18 @@ type corsHandler struct {
 // ServeHTTP adds CORS headers.
 func (c corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusNoContent)
+		// According to the documentation for ResponseWriter.WriteHeader and
+		// ResponseWriter.Header, modifications to the Header must happen BEFORE
+		// any call to WriteHeader. That means it should be, in order:
+		// 1. Write all your Headers
+		// 2. Call WriteHeader to set your status
+		// 3. Write to the body
 		c.addCORSHeaders(w, r)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	c.next.ServeHTTP(w, r)
 	c.addCORSHeaders(w, r)
+	c.next.ServeHTTP(w, r)
 }
 
 func (c corsHandler) addCORSHeaders(w http.ResponseWriter, r *http.Request) {

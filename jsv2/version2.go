@@ -37,8 +37,9 @@ function logVisit(document) {
 `
 
 func Write(w http.ResponseWriter, code int) {
-	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Content-Length", strconv.Itoa(len(returnedJavaScript)))
+	// Note: All w.Header() modifications must be made BEFORE this call.
+	w.WriteHeader(code)
 	fmt.Fprintf(w, returnedJavaScript)
 }

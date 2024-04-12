@@ -25,8 +25,9 @@ type dntMiddleware struct {
 
 func (d dntMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if RequestsDoNotTrack(r) {
-		w.WriteHeader(http.StatusNoContent)
 		SetDoNotTrack(w)
+		// Note: All w.Header() modifications must be made BEFORE this call.
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	d.nextHandler.ServeHTTP(w, r)

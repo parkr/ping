@@ -1,7 +1,6 @@
 package ping
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -34,12 +33,6 @@ func parseReferer(referer string) (*url.URL, error) {
 	}
 
 	return url.Parse(referer)
-}
-
-func jsonError(w http.ResponseWriter, statusCode int, message string) {
-	w.WriteHeader(statusCode)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 // ping routes to pingv1 or pingv2 depending on the version code in the form.
