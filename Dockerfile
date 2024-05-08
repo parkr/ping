@@ -1,4 +1,4 @@
-FROM golang:1.22.2-bullseye as builder
+FROM golang:1.22.3-bullseye as builder
 WORKDIR /workspace
 EXPOSE 3306
 COPY . .
