@@ -15,6 +15,7 @@ import (
 	"github.com/parkr/ping/dnt"
 	"github.com/parkr/ping/jsv1"
 	"github.com/parkr/ping/jsv2"
+	"github.com/parkr/ping/secgpc"
 )
 
 const xForwardedForHeaderName = "X-Forwarded-For"
@@ -204,15 +205,17 @@ func health(w http.ResponseWriter, r *http.Request) {
 func NewHandler(allowedHosts []string, pingBaseURL string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_health", health)
-	pingHandler := dnt.NewMiddleware(
-		NewHostAuthMiddleware(allowedHosts,
-			http.HandlerFunc(ping)))
+	pingHandler := secgpc.NewMiddleware(
+		dnt.NewMiddleware(
+			NewHostAuthMiddleware(allowedHosts,
+				http.HandlerFunc(ping))))
 	mux.Handle("/ping", pingHandler)
 	mux.Handle("/ping.js", pingHandler)
 	submitHandler := cors.NewMiddleware(allowedHosts,
-		dnt.NewMiddleware(
-			NewHostAuthMiddleware(allowedHosts,
-				submitv2Handler{pingHandler})))
+		secgpc.NewMiddleware(
+			dnt.NewMiddleware(
+				NewHostAuthMiddleware(allowedHosts,
+					submitv2Handler{pingHandler}))))
 	mux.Handle("/submit", submitHandler)
 	mux.Handle("/submit.js", submitHandler)
 	mux.Handle("/counts", cors.NewMiddleware(allowedHosts, http.HandlerFunc(counts)))

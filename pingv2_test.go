@@ -9,6 +9,7 @@ import (
 	"github.com/parkr/ping/analytics"
 	"github.com/parkr/ping/database"
 	"github.com/parkr/ping/dnt"
+	"github.com/parkr/ping/secgpc"
 )
 
 func TestPingV2_EmptyReferrer(t *testing.T) {
@@ -82,6 +83,31 @@ func TestPingV2_RequestNotToTrack(t *testing.T) {
 	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
 	if actual != dnt.DoNotTrackHeaderValue {
 		t.Errorf("Expected %s: %s, got: %v", dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue, actual)
+	}
+}
+
+func TestPingV2_RequestGlobalSecurityControl(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping?v=2", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://example.org")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set(secgpc.SecGPCHeaderName, secgpc.SecGPCHeaderValue)
+
+	recorder := httptest.NewRecorder()
+	handler := NewHandler([]string{"example.org"}, "")
+	handler.ServeHTTP(recorder, request)
+
+	if status := recorder.Code; status != http.StatusNoContent {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNoContent)
+	}
+
+	actual := recorder.Header().Get(secgpc.SecGPCHeaderName)
+	if actual != secgpc.SecGPCHeaderValue {
+		t.Errorf("Expected %s: %s, got: %v", secgpc.SecGPCHeaderName, secgpc.SecGPCHeaderValue, actual)
 	}
 }
 
