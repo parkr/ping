@@ -11,6 +11,7 @@ import (
 	"github.com/parkr/ping/cors"
 	"github.com/parkr/ping/database"
 	"github.com/parkr/ping/dnt"
+	"github.com/parkr/ping/secgpc"
 )
 
 func TestPingEmptyReferrer(t *testing.T) {
@@ -96,6 +97,28 @@ func TestPingRequestNotToTrack(t *testing.T) {
 	actual := recorder.Header().Get(dnt.DoNotTrackHeaderName)
 	if actual != dnt.DoNotTrackHeaderValue {
 		t.Errorf("Expected %s: %s, got: %v", dnt.DoNotTrackHeaderName, dnt.DoNotTrackHeaderValue, actual)
+	}
+}
+
+func TestPingRequestGlobalPrivacyControl(t *testing.T) {
+	request, err := http.NewRequest("GET", "/ping", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request.Header.Set("Referer", "http://example.org")
+	request.Header.Set("User-Agent", "go test client")
+	request.Header.Set(secgpc.SecGPCHeaderName, secgpc.SecGPCHeaderValue)
+
+	recorder := httptest.NewRecorder()
+	handler := NewHandler([]string{"example.org"}, "")
+	handler.ServeHTTP(recorder, request)
+
+	assertStatusCode(t, recorder, http.StatusNoContent)
+
+	actual := recorder.Header().Get(secgpc.SecGPCHeaderName)
+	if actual != secgpc.SecGPCHeaderValue {
+		t.Errorf("Expected %s: %s, got: %v", secgpc.SecGPCHeaderName, secgpc.SecGPCHeaderValue, actual)
 	}
 }
 
