@@ -1,4 +1,4 @@
-FROM golang:1.26rc3-bookworm as builder
+FROM golang:1.26-bookworm as builder
 WORKDIR /workspace
 EXPOSE 3306
 COPY . .
