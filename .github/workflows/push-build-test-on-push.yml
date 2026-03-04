@@ -7,7 +7,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - name: set up qemu virt with platforms
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
       with:
         platforms: arm64,arm
     - name: set up docker buildx builder with platforms
