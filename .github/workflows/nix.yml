@@ -1,0 +1,26 @@
+name: Nix
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+    - uses: actions/checkout@v7
+    - uses: DeterminateSystems/nix-installer-action@main
+    - name: Check vendorHash is current
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        script/update-vendor-hash || true
+        if ! git diff --quiet nix/package.nix; then
+          git diff nix/package.nix
+          echo "::error file=nix/package.nix::vendorHash is stale. Run script/update-vendor-hash and commit the result."
+          exit 1
+        fi
+    - run: nix build .#ping --print-build-logs
+    - run: nix run .#ping -- -h
+    - run: nix flake check

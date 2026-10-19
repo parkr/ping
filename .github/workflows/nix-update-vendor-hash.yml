@@ -1,0 +1,28 @@
+name: Nix update vendorHash
+# Run manually from a PR branch ("Use workflow from") after go.mod / go.sum change.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Refuse to run on the default branch
+      if: ${{ github.ref_name == github.event.repository.default_branch }}
+      run: |
+        echo "::error::Select a PR branch, not ${{ github.ref_name }}."
+        exit 1
+    - uses: actions/checkout@v7
+    - uses: DeterminateSystems/nix-installer-action@main
+    - name: Update and commit vendorHash
+      run: |
+        script/update-vendor-hash || true
+        if git diff --quiet nix/package.nix; then
+          echo "vendorHash is already current."
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -m "nix: update vendorHash" nix/package.nix
+        git push origin "HEAD:${{ github.ref_name }}"
