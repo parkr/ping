@@ -62,6 +62,27 @@ $ docker run --rm \
 This will save all data to the specified sqlite3 database,
 mounted to the container and written back to the host.
 
+On NixOS, add the flake as an input and enable the module:
+
+```nix
+# flake.nix
+inputs.ping.url = "github:parkr/ping";
+
+# your configuration
+imports = [ inputs.ping.nixosModules.default ];
+services.ping = {
+  enable = true;
+  hosts = [ "example.com" "my-site.com" ]; # required: see `-hosts` below
+  baseUrl = "https://ping.example.com";    # where /ping.js calls back to
+};
+```
+
+This runs `ping` as a hardened systemd service on `127.0.0.1:8000`, ready to
+sit behind a reverse proxy, with its sqlite database in
+`/var/lib/ping/ping_production.sqlite3`. `services.ping.port`,
+`.listenAddress` and `.package` are also options. Upgrade with
+`nix flake update ping`.
+
 Then, load the script on your pages in the HTML:
 
 ```html
