@@ -1,0 +1,23 @@
+#!/bin/sh
+# Recompute vendorHash in nix/package.nix after go.mod / go.sum change.
+set -eu
+cd "$(dirname "$0")/.."
+
+file=nix/package.nix
+sed -i.bak -E 's|vendorHash = .*;|vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";|' "$file"
+rm -f "$file.bak"
+
+# Stage so the flake sees the file even in a dirty tree.
+out=$(nix build .#ping --no-link 2>&1 || true)
+hash=$(printf '%s\n' "$out" | sed -n 's/^ *got: *//p' | head -n1)
+
+if [ -z "$hash" ]; then
+  # Hash was already correct (or the build failed for another reason).
+  printf '%s\n' "$out" | tail -20
+  git checkout -- "$file"
+  exit 1
+fi
+
+sed -i.bak -E "s|vendorHash = .*;|vendorHash = \"$hash\";|" "$file"
+rm -f "$file.bak"
+echo "vendorHash = $hash"
