@@ -2,3 +2,4 @@ _vendor
 /ping
 /ping-initialize-db
 *.sqlite3
+result
