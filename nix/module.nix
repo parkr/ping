@@ -13,6 +13,10 @@ self:
 
 let
   cfg = config.services.ping;
+
+  # An IPv6 literal needs brackets in host:port.
+  bindHost =
+    if lib.hasInfix ":" cfg.listenAddress then "[${cfg.listenAddress}]" else cfg.listenAddress;
   inherit (lib)
     mkOption
     mkEnableOption
@@ -44,6 +48,21 @@ in
       '';
     };
 
+    user = mkOption {
+      type = types.str;
+      default = "ping";
+      description = ''
+        User to run as. Created, with a group of the same name, only when left
+        at the default; set your own user to manage it yourself.
+      '';
+    };
+
+    group = mkOption {
+      type = types.str;
+      default = "ping";
+      description = "Group to run as. See `user`.";
+    };
+
     listenAddress = mkOption {
       type = types.str;
       default = "127.0.0.1";
@@ -62,6 +81,16 @@ in
       defaultText = lib.literalExpression ''"http://localhost:''${toString config.services.ping.port}"'';
       example = "https://ping.example.com";
       description = "Public URL that /ping.js and /stats.js call back to (`-baseurl`).";
+    };
+
+    openFirewall = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Open `port` in the firewall. Leave off behind a reverse proxy on the
+        default loopback address; turn on only if you set a non-loopback
+        `listenAddress` and want ping reachable directly.
+      '';
     };
 
     databasePath = mkOption {
@@ -83,11 +112,15 @@ in
       }
     ];
 
-    users.users.ping = {
-      isSystemUser = true;
-      group = "ping";
+    users.users = mkIf (cfg.user == "ping") {
+      ping = {
+        isSystemUser = true;
+        inherit (cfg) group;
+      };
     };
-    users.groups.ping = { };
+    users.groups = mkIf (cfg.group == "ping") { ping = { }; };
+
+    networking.firewall.allowedTCPPorts = mkIf cfg.openFirewall [ cfg.port ];
 
     systemd.services.ping = {
       description = "ping, a little analytics service";
@@ -100,12 +133,12 @@ in
       serviceConfig = {
         ExecStart = lib.escapeShellArgs [
           (lib.getExe cfg.package)
-          "-http=${cfg.listenAddress}:${toString cfg.port}"
+          "-http=${bindHost}:${toString cfg.port}"
           "-hosts=${lib.concatStringsSep "," cfg.hosts}"
           "-baseurl=${cfg.baseUrl}"
         ];
-        User = "ping";
-        Group = "ping";
+        User = cfg.user;
+        Group = cfg.group;
         StateDirectory = "ping";
         StateDirectoryMode = "0700";
         Restart = "on-failure";

@@ -80,8 +80,8 @@ services.ping = {
 This runs `ping` as a hardened systemd service on `127.0.0.1:8000`, ready to
 sit behind a reverse proxy, with its sqlite database in
 `/var/lib/ping/ping_production.sqlite3`. `services.ping.port`,
-`.listenAddress` and `.package` are also options. Upgrade with
-`nix flake update ping`.
+`.listenAddress`, `.openFirewall`, `.user`, `.group` and `.package` are also
+options. Upgrade with `nix flake update ping`.
 
 Then, load the script on your pages in the HTML:
 
