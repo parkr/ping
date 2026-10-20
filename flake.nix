@@ -65,7 +65,12 @@
                   enable = true;
                   hosts = [ "example.com" ];
                 };
-                boot.isContainer = true;
+                # Just enough for a system to evaluate: no bootloader, a stub root.
+                boot.loader.grub.enable = false;
+                fileSystems."/" = {
+                  device = "none";
+                  fsType = "tmpfs";
+                };
                 system.stateVersion = "26.05";
               }
             ];
