@@ -62,26 +62,49 @@ $ docker run --rm \
 This will save all data to the specified sqlite3 database,
 mounted to the container and written back to the host.
 
-On NixOS, add the flake as an input and enable the module:
+On NixOS, three copy-pasteable steps. Add the flake (the `follows` line keeps
+you to one nixpkgs):
 
 ```nix
 # flake.nix
-inputs.ping.url = "github:parkr/ping";
+inputs.ping = {
+  url = "github:parkr/ping";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+# ...and in your nixosSystem:
+modules = [ inputs.ping.nixosModules.default ./configuration.nix ];
+```
 
-# your configuration
-imports = [ inputs.ping.nixosModules.default ];
+Enable it:
+
+```nix
+# configuration.nix
 services.ping = {
   enable = true;
-  hosts = [ "example.com" "my-site.com" ]; # required: see `-hosts` below
-  baseUrl = "https://ping.example.com";    # where /ping.js calls back to
+  hosts = [ "example.com" ];            # sites allowed to report; add :port if not 80/443
+  baseUrl = "https://ping.example.com"; # where /ping.js calls back to
 };
 ```
 
-This runs `ping` as a hardened systemd service on `127.0.0.1:8000`, ready to
-sit behind a reverse proxy, with its sqlite database in
-`/var/lib/ping/ping_production.sqlite3`. `services.ping.port`,
-`.listenAddress`, `.openFirewall`, `.user`, `.group` and `.package` are also
-options. Upgrade with `nix flake update ping`.
+Put TLS in front (ping listens on `127.0.0.1:8000`):
+
+```nix
+security.acme = { acceptTerms = true; defaults.email = "you@example.com"; };
+services.nginx = {
+  enable = true;
+  recommendedProxySettings = true; # passes the visitor's IP in X-Forwarded-For
+  virtualHosts."ping.example.com" = {
+    enableACME = true;
+    forceSSL = true;
+    locations."/".proxyPass = "http://127.0.0.1:${toString config.services.ping.port}";
+  };
+};
+```
+
+Upgrade with `nix flake update ping`. The database is
+`/var/lib/ping/ping_production.sqlite3`. Other options (`port`, `listenAddress`,
+`openFirewall`, `user`, `group`, `stateDirectoryMode`, `package`) are documented
+in [`nix/module.nix`](nix/module.nix).
 
 Then, load the script on your pages in the HTML:
 
