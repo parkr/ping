@@ -24,7 +24,12 @@ func main() {
 	flag.StringVar(&pingBaseURL, "baseurl", "http://localhost:"+port, "Base URL used for XHR request in stats.js")
 	flag.Parse()
 
-	ping.Initialize(os.Getenv("PING_DB"))
+	// Opens the database, creating the schema if it is missing (idempotent).
+	// Fail loudly if that can't be done: otherwise the server listens with no
+	// database and every request errors, and a service manager sees it as up.
+	if err := ping.Initialize(os.Getenv("PING_DB")); err != nil {
+		log.Fatalf("error opening database %q: %v", os.Getenv("PING_DB"), err)
+	}
 
 	allowedHosts := strings.Split(hostAllowlist, ",")
 	log.Printf("allowing the following hosts: %v", allowedHosts)
