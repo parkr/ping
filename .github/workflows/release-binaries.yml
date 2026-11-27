@@ -1,0 +1,82 @@
+name: Release binaries
+
+# Prebuilt linux binaries on every release, so a host can download ping instead
+# of compiling it, checking it against SHA256SUMS.
+#
+# ping needs cgo (mattn/go-sqlite3), so each architecture builds on its own
+# runner rather than cross-compiling, and links statically: no shared libraries
+# and no particular loader to find on the host (NixOS has none at the usual path).
+#
+# A manual run builds the same files as a workflow artifact, without touching a
+# release: a way to try this workflow on a branch.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+        - arch: amd64
+          runner: ubuntu-latest
+        - arch: arm64
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-go@v7
+      with:
+        go-version-file: go.mod
+    - name: Build
+      env:
+        CGO_ENABLED: "1"
+        ARCH: ${{ matrix.arch }}
+      run: |
+        set -euo pipefail
+        mkdir dist
+        for cmd in ping ping-healthcheck ping-initialize-db; do
+          go build -trimpath -tags 'netgo osusergo sqlite_omit_load_extension' \
+            -ldflags '-s -w -linkmode external -extldflags "-static"' \
+            -o "dist/${cmd}-linux-${ARCH}" "./cmd/${cmd}"
+          # Fail the release rather than ship a binary that needs a loader.
+          if readelf -l "dist/${cmd}-linux-${ARCH}" | grep -q INTERP; then
+            echo "::error::${cmd} is not statically linked"; exit 1
+          fi
+        done
+        PING_DB= ./dist/ping-initialize-db-linux-${ARCH}
+    - uses: actions/upload-artifact@v7
+      with:
+        name: ping-linux-${{ matrix.arch }}
+        path: dist/
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        path: dist
+        merge-multiple: true
+    - name: Checksums
+      working-directory: dist
+      run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+    - name: Upload to the release
+      if: github.event_name == 'release'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: gh release upload "$TAG" dist/* --clobber
+    - name: Keep as an artifact
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ping-binaries
+        path: dist/
