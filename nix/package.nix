@@ -21,7 +21,7 @@ buildGoModule {
   };
 
   # Update with script/update-vendor-hash after changing go.mod / go.sum.
-  vendorHash = "sha256-QXxZfwz+1UXqnpMIz9R0RcpN9dmKEdB6f3X+wmTdHFY=";
+  vendorHash = "sha256-CDXSlhk4uQvAzQC16Eyis1JcqVl+8eyKZzy/znj5x8E=";
 
   # cgo is required by go-sqlite3.
   env.CGO_ENABLED = "1";
